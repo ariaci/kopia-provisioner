@@ -1,0 +1,19 @@
+users:
+  bob:
+    default:
+      password: "kopia-hash:eyJwYXNzd29yZEhhc2hWZXJzaW9uIjoxLCJwYXNzd29yZEhhc2giOiJFY0l4NGhmOFQ5MVFzNjRoUVBQTVUyU3EwOU1QQnRFNlVqRWljVUZDVG1saGN1QWVpdVVRaTBDRlZWY2RGUlNmNCtRRTBKcUszandYanlyOXFqcWxnUT09In0="
+    hosts:
+      home:
+        password: "plain:bob@home-password"
+      work:
+  jeff:
+    default:
+      password: "plain:jeff-password"
+    hosts:
+      - home
+  sarah:
+    default:
+      password: "kopia-hash:eyJwYXNzd29yZEhhc2hWZXJzaW9uIjoxLCJwYXNzd29yZEhhc2giOiJmdThDMi9NaTV3aVNuMGJaSUg5ZnlPYmFnYWRpSm1jYVgwVzlKditlSVNERStFNTBqTmhEcVVOb25MdXV2OHUyS2xMWjNhSktwbWJkMk5zY3FuUW9Udz09In0="
+    hosts:
+      - work
+      - office
