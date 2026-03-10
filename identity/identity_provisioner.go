@@ -29,6 +29,13 @@ func (c config) makeIdentities() provisionerIdentities {
 	identities := make(provisionerIdentities)
 
 	for user, userConfig := range c.Users {
+		// set default password to NilPassword if not set, so we have no problems later
+		// with nil interfaces when trying to call KopiaArguments() on them
+		if !userConfig.Default.Password.IsSet() {
+			userConfig.Default.Password = PasswordWrapper{
+				Password: NilPassword{},
+			}
+		}
 		// fill in identities with corresponding (default) passwords
 		for host, hostConfig := range userConfig.Hosts {
 			if !hostConfig.Password.IsSet() {

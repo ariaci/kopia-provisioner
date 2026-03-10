@@ -6,6 +6,11 @@ import (
 )
 
 func (context UserActionContext) addIdentity(identity identity.Identity, info identity.IdentityInfo) error {
-	_, err := kopia.Run(context.ConfigFile, context.kopiaArguments(kopia.KopiaActionAdd, identity, info)...)
+	args, err := context.kopiaArguments(kopia.KopiaActionAdd, identity, info)
+	if err != nil {
+		return err
+	}
+
+	_, err = kopia.Run(context.ConfigFile, args...)
 	return err
 }

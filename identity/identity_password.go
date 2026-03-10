@@ -8,11 +8,14 @@ import (
 )
 
 type Password interface {
-	KopiaArguments() []string
+	KopiaArguments() ([]string, error)
 }
 
 type PasswordWrapper struct {
 	Password
+}
+
+type NilPassword struct {
 }
 
 type PlainPassword struct {
@@ -27,12 +30,16 @@ func (w PasswordWrapper) IsSet() bool {
 	return w.Password != nil
 }
 
-func (p PlainPassword) KopiaArguments() []string {
-	return []string{"--user-password", p.Password}
+func (p NilPassword) KopiaArguments() ([]string, error) {
+	return nil, fmt.Errorf("no password provided")
 }
 
-func (p KopiaPasswordHash) KopiaArguments() []string {
-	return []string{"--user-password-hash", p.Hash}
+func (p PlainPassword) KopiaArguments() ([]string, error) {
+	return []string{"--user-password", p.Password}, nil
+}
+
+func (p KopiaPasswordHash) KopiaArguments() ([]string, error) {
+	return []string{"--user-password-hash", p.Hash}, nil
 }
 
 func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
@@ -61,12 +68,22 @@ func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func newPassword(pwType, value string) (Password, error) {
-	switch pwType {
+	parts := strings.SplitN(pwType, "@", 2)
+	switch parts[0] {
+	// --- Password types ---
 	case "plain":
 		return PlainPassword{Password: value}, nil
 	case "kopia-hash":
 		return KopiaPasswordHash{Hash: value}, nil
+	// --- Provider types or unknown ---
 	default:
-		return nil, fmt.Errorf("unknown password type: %s", pwType)
+		if factory, ok := providerRegistry[parts[0]]; ok {
+			if len(parts) < 2 || parts[1] == "" {
+				return nil, fmt.Errorf("missing next stage for provider '%s', expected %s[@provider]@type", pwType, parts[0])
+			}
+			return factory(value, parts[1])
+		}
+
+		return nil, fmt.Errorf("unknown password type or provider: %s", pwType)
 	}
 }
