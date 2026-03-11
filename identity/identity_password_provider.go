@@ -52,7 +52,7 @@ func newInlinePasswordProvider(value, nextType string) (Password, error) {
 
 func (p InlinePasswordProvider) KopiaArguments() ([]string, error) {
 	next, err := p.ProviderStage.EnsureNextStage(func() (string, error) {
-		return os.Getenv(p.Value), nil
+		return p.Value, nil
 	})
 	if err != nil {
 		return nil, err

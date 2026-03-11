@@ -35,10 +35,18 @@ func (p NilPassword) KopiaArguments() ([]string, error) {
 }
 
 func (p PlainPassword) KopiaArguments() ([]string, error) {
+	if p.Password == "" {
+		return nil, fmt.Errorf("Kopia plain password cannot be empty")
+	}
+
 	return []string{"--user-password", p.Password}, nil
 }
 
 func (p KopiaPasswordHash) KopiaArguments() ([]string, error) {
+	if p.Hash == "" {
+		return nil, fmt.Errorf("Kopia password hash cannot be empty")
+	}
+
 	return []string{"--user-password-hash", p.Hash}, nil
 }
 
@@ -52,7 +60,7 @@ func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
 
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("invalid password format, expected type:value")
+		return fmt.Errorf("invalid password format, expected [provider>...>]type:value")
 	}
 
 	typ := parts[0]
@@ -68,9 +76,11 @@ func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
 }
 
 func newPassword(pwType, value string) (Password, error) {
-	parts := strings.SplitN(pwType, "@", 2)
+	parts := strings.SplitN(pwType, ">", 2)
 	switch parts[0] {
 	// --- Password types ---
+	case "nil":
+		return NilPassword{}, nil
 	case "plain":
 		return PlainPassword{Password: value}, nil
 	case "kopia-hash":
@@ -79,7 +89,7 @@ func newPassword(pwType, value string) (Password, error) {
 	default:
 		if factory, ok := providerRegistry[parts[0]]; ok {
 			if len(parts) < 2 || parts[1] == "" {
-				return nil, fmt.Errorf("missing next stage for provider '%s', expected %s[@provider]@type", pwType, parts[0])
+				return nil, fmt.Errorf("missing next stage for provider '%s', expected %s[>provider]>type", pwType, parts[0])
 			}
 			return factory(value, parts[1])
 		}
