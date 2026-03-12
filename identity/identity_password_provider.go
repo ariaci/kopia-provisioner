@@ -1,13 +1,23 @@
 package identity
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
 
-var providerRegistry = map[string]func(value, next string) (Password, error){
+var providerRegistry = map[string]func(context ProviderPipelineContext, value, next string) (Password, error){
 	"env":    newEnvPasswordProvider,
 	"inline": newInlinePasswordProvider,
 }
 
+type ProviderPipelineContext struct {
+	BaseDir string
+}
+
 type ProviderStage struct {
+	Context       ProviderPipelineContext
 	NextStageType string
 	NextStage     Password
 }
@@ -22,6 +32,33 @@ type EnvPasswordProvider struct {
 	Variable string
 }
 
+func newProviderPipelineContext(filePath string) ProviderPipelineContext {
+	var err error
+	switch {
+	case filePath == "":
+		filePath, err = os.Executable()
+		if err == nil {
+			filePath = filepath.Dir(filePath)
+		}
+	case filepath.IsAbs(filePath):
+		filePath = filepath.Dir(filePath)
+	default:
+		var wd string
+		wd, err = os.Getwd()
+		if err == nil {
+			filePath = filepath.Join(wd, filepath.Dir(filePath))
+		}
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	return ProviderPipelineContext{
+		BaseDir: filePath,
+	}
+}
+
 func (p *ProviderStage) EnsureNextStage(resolveFn func() (string, error)) (Password, error) {
 	if p.NextStage != nil {
 		return p.NextStage, nil
@@ -32,7 +69,7 @@ func (p *ProviderStage) EnsureNextStage(resolveFn func() (string, error)) (Passw
 		return nil, err
 	}
 
-	next, err := newPassword(p.NextStageType, input)
+	next, err := newPassword(p.Context, p.NextStageType, input)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +78,11 @@ func (p *ProviderStage) EnsureNextStage(resolveFn func() (string, error)) (Passw
 	return next, nil
 }
 
-func newInlinePasswordProvider(value, nextType string) (Password, error) {
+func newInlinePasswordProvider(context ProviderPipelineContext, value, nextType string) (Password, error) {
 	return InlinePasswordProvider{
 		Value: value,
 		ProviderStage: ProviderStage{
+			Context:       context,
 			NextStageType: nextType,
 		},
 	}, nil
@@ -61,10 +99,11 @@ func (p InlinePasswordProvider) KopiaArguments() ([]string, error) {
 	return next.KopiaArguments()
 }
 
-func newEnvPasswordProvider(variable, nextType string) (Password, error) {
+func newEnvPasswordProvider(context ProviderPipelineContext, variable, nextType string) (Password, error) {
 	return EnvPasswordProvider{
-		Variable: variable,
+		Variable: strings.TrimSpace(variable),
 		ProviderStage: ProviderStage{
+			Context:       context,
 			NextStageType: nextType,
 		},
 	}, nil
@@ -72,6 +111,9 @@ func newEnvPasswordProvider(variable, nextType string) (Password, error) {
 
 func (p EnvPasswordProvider) KopiaArguments() ([]string, error) {
 	next, err := p.ProviderStage.EnsureNextStage(func() (string, error) {
+		if p.Variable == "" {
+			return "", fmt.Errorf("environment variable name cannot be empty")
+		}
 		return os.Getenv(p.Variable), nil
 	})
 	if err != nil {

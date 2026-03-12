@@ -13,6 +13,8 @@ type Password interface {
 
 type PasswordWrapper struct {
 	Password
+	Type  string
+	Value string
 }
 
 type NilPassword struct {
@@ -24,10 +26,6 @@ type PlainPassword struct {
 
 type KopiaPasswordHash struct {
 	Hash string
-}
-
-func (w PasswordWrapper) IsSet() bool {
-	return w.Password != nil
 }
 
 func (p NilPassword) KopiaArguments() ([]string, error) {
@@ -63,19 +61,32 @@ func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
 		return fmt.Errorf("invalid password format, expected [provider>...>]type:value")
 	}
 
-	typ := parts[0]
-	value := parts[1]
+	w.Type = parts[0]
+	w.Value = parts[1]
 
-	pw, err := newPassword(typ, value)
+	return nil
+}
+
+func (w *PasswordWrapper) resolve(context ProviderPipelineContext, defaultPassword Password) error {
+	if w.Password != nil {
+		return nil // already resolved
+	}
+
+	if w.Type == "" {
+		*w = PasswordWrapper{Password: defaultPassword}
+		return nil
+	}
+
+	password, err := newPassword(context, w.Type, w.Value)
 	if err != nil {
 		return err
 	}
 
-	w.Password = pw
+	*w = PasswordWrapper{Password: password}
 	return nil
 }
 
-func newPassword(pwType, value string) (Password, error) {
+func newPassword(context ProviderPipelineContext, pwType, value string) (Password, error) {
 	parts := strings.SplitN(pwType, ">", 2)
 	switch parts[0] {
 	// --- Password types ---
@@ -91,7 +102,7 @@ func newPassword(pwType, value string) (Password, error) {
 			if len(parts) < 2 || parts[1] == "" {
 				return nil, fmt.Errorf("missing next stage for provider '%s', expected %s[>provider]>type", pwType, parts[0])
 			}
-			return factory(value, parts[1])
+			return factory(context, value, parts[1])
 		}
 
 		return nil, fmt.Errorf("unknown password type or provider: %s", pwType)
