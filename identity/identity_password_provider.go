@@ -9,6 +9,7 @@ import (
 
 var providerRegistry = map[string]func(context ProviderPipelineContext, value, next string) (Password, error){
 	"env":    newEnvPasswordProvider,
+	"file":   newFilePasswordProvider,
 	"inline": newInlinePasswordProvider,
 }
 
@@ -30,6 +31,12 @@ type InlinePasswordProvider struct {
 type EnvPasswordProvider struct {
 	ProviderStage
 	Variable string
+}
+
+type FilePasswordProvider struct {
+	ProviderStage
+	Context  ProviderPipelineContext
+	FilePath string
 }
 
 func newProviderPipelineContext(filePath string) ProviderPipelineContext {
@@ -115,6 +122,50 @@ func (p EnvPasswordProvider) KopiaArguments() ([]string, error) {
 			return "", fmt.Errorf("environment variable name cannot be empty")
 		}
 		return os.Getenv(p.Variable), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return next.KopiaArguments()
+}
+
+func newFilePasswordProvider(context ProviderPipelineContext, filePath, nextType string) (Password, error) {
+	return FilePasswordProvider{
+		Context:  context,
+		FilePath: strings.TrimSpace(filePath),
+		ProviderStage: ProviderStage{
+			Context:       context,
+			NextStageType: nextType,
+		},
+	}, nil
+}
+
+func (p FilePasswordProvider) resolveFilePath() string {
+	if p.FilePath == "" {
+		return ""
+	}
+	if filepath.IsAbs(p.FilePath) {
+		return p.FilePath
+	}
+
+	return filepath.Join(p.Context.BaseDir, p.FilePath)
+}
+
+func (p FilePasswordProvider) KopiaArguments() ([]string, error) {
+	next, err := p.ProviderStage.EnsureNextStage(func() (string, error) {
+		filePath := p.resolveFilePath()
+		if filePath == "" {
+			return "", fmt.Errorf("file password provider requires a non-empty file path")
+		}
+
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read file '%s': %w", filePath, err)
+		}
+
+		value := strings.TrimSpace(string(data))
+		return value, nil
 	})
 	if err != nil {
 		return nil, err
