@@ -121,7 +121,14 @@ func (p EnvPasswordProvider) KopiaArguments() ([]string, error) {
 		if p.Variable == "" {
 			return "", fmt.Errorf("environment variable name cannot be empty")
 		}
-		return os.Getenv(p.Variable), nil
+
+		value, ok := os.LookupEnv(p.Variable)
+		if !ok {
+			return "", fmt.Errorf("environment variable '%s' not found", p.Variable)
+		}
+
+		value = strings.TrimSpace(value)
+		return value, nil
 	})
 	if err != nil {
 		return nil, err

@@ -8,7 +8,8 @@ The design emphasizes modularity, predictable behavior, and clean separation of 
 
 - Declarative user provisioning via YAML
 - Host-specific overrides for passwords and identity settings
-- Typed password backends (`plain`, `kopia-hash`)
+- Supply passwords using chainable providers (`file`, `env`, `inline`) with support for provider pipelines (`>`)
+- Typed password backends (`nil`, `plain`, `kopia-hash`)
 - Deterministic normalization of all identities
 - Clean Kopia CLI integration through a structured argument builder
 - Git-style action reporting (`-`, `A`, `U`, `D`, `!A`, `!U`, `!D`)
@@ -136,13 +137,13 @@ The tool will:
 The provisioner uses a compact, Git‑inspired status notation:
 | Symbol | Meaning |
 |--------|---------|
-| - | Nothing done |
-| A | User added |
-| U | User updated |
-| D | User deleted |
-| !A | Add failed |
-| !U | Update failed |
-| !D | Remove failed |
+| `-` | Nothing done |
+| `A` | User added |
+| `U` | User updated |
+| `D` | User deleted |
+| `!A` | Add failed |
+| `!U` | Update failed |
+| `!D` | Remove failed |
 
 Example:
 
@@ -153,12 +154,94 @@ Example:
 !D sarah@work
 ```
 
+## 🔐 Password providers
+
+Passwords in the configuration are defined using a small provider‑based DSL.
+This mechanism allows you to supply plain passwords or password hashes from different sources such as environment variables, files, or inline YAML values.
+
+Providers can be chained using the `>` character.
+Each provider receives the output of the previous one, allowing you to build transformation pipelines.
+
+If no provider is specified, __kopia‑provisioner automatically uses the__ `inline` provider.
+
+The formal grammar of the password DSL is defined below (EBNF):
+```ebnf
+password        = provider-chain type ":" value ;
+provider-chain  = [ backend { ">" backend } ">" ] ;
+
+type            = "plain" | "kopia-hash" | "nil" ;
+backend         = "file" | "env" | "inline" ;
+
+value           = { ? any character ? } ;
+```
+
+Examples:
+```
+env>file>plain:DB_PWD_FILE
+file>kopia-hash:secrets/.bob-pwdhash
+inline>plain:supersecretpassword
+plain:supersecretpassword
+nil:
+```
+
+### 📁 `file` - Load password from a file
+
+Reads the password from a file on disk.
+Relative paths are resolved against the configuration’s base directory.
+
+Example:
+
+```yaml
+password: "file>plain:secrets/db-password.txt"
+```
+
+Behavior:
+- value is a file path
+- relative paths → resolved against the base directory
+- file is read lazily during pipeline execution
+- surrounding whitespace is trimmed
+- errors if the file does not exist or cannot be read
+
+### 🔧 `env` - Load password from an environment variable
+
+Reads the password from an environment variable.
+
+Example:
+
+```yaml
+password: "env>plain:DB_PASSWORD"
+```
+
+Behavior:
+- value is the environment variable name
+- errors if the variable is not set
+- whitespace is trimmed
+
+### 🔑 `inline` - Inline password value
+A static password defined directly in the configuration.
+
+Example:
+
+```yaml
+password: "inline>plain:supersecret"
+```
+
+Behavior:
+- value is used as‑is
+- no additional processing
+
 ## 🔐 Password backends
 
 Passwords are provided through a typed interface. Each backend implements:
 
 ```Go
-KopiaArguments() []string
+KopiaArguments() ([]string, error)
+```
+
+### Empty password
+
+```yaml
+password: "nil:"
 ```
 
 ### Plain password
