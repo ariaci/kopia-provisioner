@@ -25,15 +25,23 @@ type ProvisionerIdentityConfig struct {
 
 type provisionerIdentities map[Identity]ProvisionerIdentityConfig
 
-func (c config) makeIdentities() provisionerIdentities {
+func (c config) makeIdentities(context ProviderPipelineContext) provisionerIdentities {
 	identities := make(provisionerIdentities)
 
 	for user, userConfig := range c.Users {
-		// fill in identities with corresponding (default) passwords
+		// instantiate root password of default password pipeline for the user
+		err := userConfig.Default.Password.resolve(context, NilPassword{})
+		if err != nil {
+			panic(err)
+		}
+
 		for host, hostConfig := range userConfig.Hosts {
-			if !hostConfig.Password.IsSet() {
-				hostConfig.Password = userConfig.Default.Password
+			// instantiate root password of password pipeline for the identity
+			err := hostConfig.Password.resolve(context, userConfig.Default.Password)
+			if err != nil {
+				panic(err)
 			}
+
 			identities[newIdentityFromUserAndHost(user, host)] = hostConfig
 		}
 	}
@@ -77,5 +85,5 @@ func loadProvisionerIdentities(configPath string) provisionerIdentities {
 		panic(err)
 	}
 
-	return cfg.makeIdentities()
+	return cfg.makeIdentities(newProviderPipelineContext(configPath))
 }

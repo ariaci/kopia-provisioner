@@ -74,13 +74,19 @@ func (context UserActionContext) classify(action UserAction, info identity.Ident
 	}
 }
 
-func (context UserActionContext) kopiaArguments(action kopia.KopiaAction, identity identity.Identity, info identity.IdentityInfo) []string {
+func (context UserActionContext) kopiaArguments(action kopia.KopiaAction, identity identity.Identity, info identity.IdentityInfo) ([]string, error) {
 	args := []string{"server", "users", action.String(), identity.String()}
-	if action != kopia.KopiaActionRemove {
-		args = append(args, info.Provisioner.Password.KopiaArguments()...)
+	if action == kopia.KopiaActionRemove {
+		return args, nil
 	}
 
-	return args
+	actionArgs, err := info.Provisioner.Password.KopiaArguments()
+	if err != nil {
+		return args, fmt.Errorf("error occurred while generating Kopia arguments for identity %s: %w", identity, err)
+	}
+
+	args = append(args, actionArgs...)
+	return args, nil
 }
 
 func (context UserActionContext) report(identity identity.Identity, c UserActionClassification, err error) {
@@ -120,8 +126,12 @@ func (context UserActionContext) Execute(action UserAction) error {
 }
 
 func (c UserActionClassification) verify(identity identity.Identity, info identity.IdentityInfo) error {
-	if (c == UserActionClassificationAdd || c == UserActionClassificationUpdate) && !info.Provisioner.Password.IsSet() {
-		return fmt.Errorf("no password provided for identity %s", identity)
+	if c != UserActionClassificationAdd && c != UserActionClassificationUpdate {
+		return nil
+	}
+
+	if _, err := info.Provisioner.Password.KopiaArguments(); err != nil {
+		return fmt.Errorf("error occurred while generating Kopia arguments for identity %s: %w", identity, err)
 	}
 
 	return nil

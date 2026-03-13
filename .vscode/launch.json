@@ -17,7 +17,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["users", "sync", "-v", "-u", "users.yml", "-c", "kopia-provisioner.config"]
+            "args": ["users", "sync", "-vd", "-u", "users.yml", "-c", "kopia-provisioner.config"]
         },
         {
             "name": "users add",
@@ -25,7 +25,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["users", "add", "-v", "users.yml", "-c", "kopia-provisioner.config"]
+            "args": ["users", "add", "-vd", "users.yml", "-c", "kopia-provisioner.config"]
         },
         {
             "name": "users remove",
@@ -33,7 +33,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["users", "remove", "-v", "users.yml", "-c", "kopia-provisioner.config"]
+            "args": ["users", "remove", "-vd", "users.yml", "-c", "kopia-provisioner.config"]
         },
         {
             "name": "users update",
@@ -41,7 +41,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "main.go",
-            "args": ["users", "update", "-v", "users.yml", "-c", "kopia-provisioner.config"]
+            "args": ["users", "update", "-vd", "users.yml", "-c", "kopia-provisioner.config"]
         }
     ]
 }
