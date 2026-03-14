@@ -5,6 +5,7 @@ import (
 	"kopia-provisioner/identity"
 	"kopia-provisioner/kopia"
 	"log"
+	"slices"
 )
 
 type UserActionFlags uint8
@@ -100,18 +101,21 @@ func (context UserActionContext) report(identity identity.Identity, c UserAction
 }
 
 func (context UserActionContext) Execute(action UserAction) error {
-	for identity, info := range context.Identities {
-		c := context.classify(action, info)
+	ids := context.Identities.MakeEntries()
+	slices.SortFunc(ids, identity.IdentityEntry.Compare)
 
-		err := c.verify(identity, info)
+	for _, entry := range ids {
+		c := context.classify(action, entry.Info)
+
+		err := c.verify(entry.Identity, entry.Info)
 		if err == nil && !context.isDryRun() {
 			switch c {
 			case UserActionClassificationAdd:
-				err = context.addIdentity(identity, info)
+				err = context.addIdentity(entry.Identity, entry.Info)
 			case UserActionClassificationUpdate:
-				err = context.updateIdentity(identity, info)
+				err = context.updateIdentity(entry.Identity, entry.Info)
 			case UserActionClassificationDelete:
-				err = context.deleteIdentity(identity, info)
+				err = context.deleteIdentity(entry.Identity, entry.Info)
 			}
 		}
 
@@ -119,7 +123,7 @@ func (context UserActionContext) Execute(action UserAction) error {
 			c |= UserActionClassificationError
 		}
 
-		context.report(identity, c, err)
+		context.report(entry.Identity, c, err)
 	}
 
 	return nil

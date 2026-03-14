@@ -7,9 +7,20 @@ import (
 )
 
 type KopiaIdentityConfig struct {
-	Line uint
+	Line int
 }
 type kopiaIdentities map[Identity]KopiaIdentityConfig
+
+func (c KopiaIdentityConfig) Compare(other KopiaIdentityConfig) int {
+	switch {
+	case c.Line < other.Line:
+		return -1
+	case c.Line > other.Line:
+		return 1
+	default:
+		return 0
+	}
+}
 
 func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
 	var identities = make(kopiaIdentities)
@@ -25,7 +36,7 @@ func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
 			continue
 		}
 
-		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: uint(i + 1)}
+		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: i + 1}
 	}
 
 	return identities

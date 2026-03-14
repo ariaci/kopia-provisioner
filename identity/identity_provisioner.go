@@ -65,6 +65,17 @@ func (c *ProvisionerIdentityConfig) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+func (c ProvisionerIdentityConfig) Compare(other ProvisionerIdentityConfig) int {
+	switch {
+	case c.Line < other.Line:
+		return -1
+	case c.Line > other.Line:
+		return 1
+	default:
+		return 0
+	}
+}
+
 func (h *ProvisionerIdentityHost) UnmarshalYAML(node *yaml.Node) error {
 	if err := node.Decode(&h.Host); err == nil {
 		h.Config = ProvisionerIdentityConfig{
