@@ -23,6 +23,12 @@ type IdentityInfo struct {
 
 type Identities map[Identity]IdentityInfo
 
+type IdentityEntry struct {
+	Identity Identity
+	Info     IdentityInfo
+}
+type IdentityEntries []IdentityEntry
+
 func newIdentityFromIdentity(identity string) Identity {
 	parts := strings.SplitN(identity, "@", 2)
 	return Identity{
@@ -78,6 +84,33 @@ func (i Identities) addProvisionerIdentities(pids provisionerIdentities) {
 			Source:      info.Source | SourceProvisioner,
 		}
 	})
+}
+
+func (i Identities) MakeEntries() IdentityEntries {
+	var entries = make(IdentityEntries, 0, len(i))
+	for identity, info := range i {
+		entries = append(entries, IdentityEntry{
+			Identity: identity,
+			Info:     info,
+		})
+	}
+
+	return entries
+}
+
+func (e IdentityEntry) Compare(other IdentityEntry) int {
+	switch {
+	case e.Info.HasProvisioner() && !other.Info.HasProvisioner():
+		return -1
+	case !e.Info.HasProvisioner() && other.Info.HasProvisioner():
+		return 1
+	case e.Info.HasProvisioner() && other.Info.HasProvisioner():
+		return e.Info.Provisioner.Compare(other.Info.Provisioner)
+	case e.Info.HasKopia() && other.Info.HasKopia():
+		return e.Info.Kopia.Compare(other.Info.Kopia)
+	}
+
+	return 0
 }
 
 type BuildIdentitiesContext struct {

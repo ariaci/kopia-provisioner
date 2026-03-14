@@ -6,8 +6,21 @@ import (
 	"strings"
 )
 
-type KopiaIdentityConfig struct{}
+type KopiaIdentityConfig struct {
+	Line int
+}
 type kopiaIdentities map[Identity]KopiaIdentityConfig
+
+func (c KopiaIdentityConfig) Compare(other KopiaIdentityConfig) int {
+	switch {
+	case c.Line < other.Line:
+		return -1
+	case c.Line > other.Line:
+		return 1
+	default:
+		return 0
+	}
+}
 
 func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
 	var identities = make(kopiaIdentities)
@@ -17,13 +30,13 @@ func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
 		log.Fatalf("kopia users list failed: %v\n%s", err, out)
 	}
 
-	for _, line := range out {
+	for i, line := range out {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 
-		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{}
+		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: i + 1}
 	}
 
 	return identities

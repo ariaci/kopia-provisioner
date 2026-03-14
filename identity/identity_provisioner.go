@@ -2,7 +2,6 @@ package identity
 
 import (
 	"fmt"
-	"maps"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -12,6 +11,10 @@ type config struct {
 	Users map[string]userConfig `yaml:"users"`
 }
 
+type ProvisionerIdentityHost struct {
+	Host   string
+	Config ProvisionerIdentityConfig
+}
 type ProvisionerIdentityHosts map[string]ProvisionerIdentityConfig
 
 type userConfig struct {
@@ -20,8 +23,10 @@ type userConfig struct {
 }
 
 type ProvisionerIdentityConfig struct {
+	Line     int
 	Password PasswordWrapper `yaml:"password"`
 }
+type ProvisionerIdentityConfigRaw ProvisionerIdentityConfig
 
 type provisionerIdentities map[Identity]ProvisionerIdentityConfig
 
@@ -49,25 +54,77 @@ func (c config) makeIdentities(context ProviderPipelineContext) provisionerIdent
 	return identities
 }
 
-func (h *ProvisionerIdentityHosts) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// First try: Unmarshal as List
-	var list []string
+func (c *ProvisionerIdentityConfig) UnmarshalYAML(node *yaml.Node) error {
+	var raw ProvisionerIdentityConfigRaw
+	if err := node.Decode(&raw); err != nil {
+		return err
+	}
+	c.Password = raw.Password
+	c.Line = node.Line
 
-	if err := unmarshal(&list); err == nil {
-		m := make(ProvisionerIdentityHosts)
-		for _, host := range list {
-			m[host] = ProvisionerIdentityConfig{}
+	return nil
+}
+
+func (c ProvisionerIdentityConfig) Compare(other ProvisionerIdentityConfig) int {
+	switch {
+	case c.Line < other.Line:
+		return -1
+	case c.Line > other.Line:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func (h *ProvisionerIdentityHost) UnmarshalYAML(node *yaml.Node) error {
+	if err := node.Decode(&h.Host); err == nil {
+		h.Config = ProvisionerIdentityConfig{
+			Line: node.Line,
 		}
-		*h = m
+		return nil
+	}
+
+	return fmt.Errorf("host must be a string, not a map")
+}
+
+func findLineForKey(r *yaml.Node, key string) int {
+	for i := 0; i < len(r.Content); i += 2 {
+		if r.Content[i].Value == key {
+			return r.Content[i].Line
+		}
+	}
+
+	return 0
+}
+
+func (h *ProvisionerIdentityHosts) fixMissingLines(node *yaml.Node) {
+	for k, v := range *h {
+		if v.Line != 0 {
+			continue
+		}
+
+		v.Line = findLineForKey(node, k)
+		(*h)[k] = v
+	}
+}
+
+func (h *ProvisionerIdentityHosts) UnmarshalYAML(node *yaml.Node) error {
+	// First try: Unmarshal as List
+	var l []ProvisionerIdentityHost
+	if err := node.Decode(&l); err == nil {
+		*h = make(ProvisionerIdentityHosts)
+		for _, e := range l {
+			(*h)[e.Host] = e.Config
+		}
 		return nil
 	}
 
 	// Second try: Unmarshal as Map
-	var m2 map[string]ProvisionerIdentityConfig
-	if err := unmarshal(&m2); err == nil {
-		m := make(ProvisionerIdentityHosts)
-		maps.Copy(m, m2)
+	var m map[string]ProvisionerIdentityConfig
+	if err := node.Decode(&m); err == nil {
 		*h = m
+		h.fixMissingLines(node)
+
 		return nil
 	}
 
