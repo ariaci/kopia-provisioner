@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-type KopiaIdentityConfig struct{}
+type KopiaIdentityConfig struct {
+	Line uint
+}
 type kopiaIdentities map[Identity]KopiaIdentityConfig
 
 func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
@@ -17,13 +19,13 @@ func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
 		log.Fatalf("kopia users list failed: %v\n%s", err, out)
 	}
 
-	for _, line := range out {
+	for i, line := range out {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 
-		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{}
+		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: uint(i + 1)}
 	}
 
 	return identities
