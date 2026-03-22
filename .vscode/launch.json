@@ -12,6 +12,14 @@
             "program": "main.go"
         },
         {
+            "name": "version",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "main.go",
+            "args": ["version"]
+        },
+        {
             "name": "users synchronize",
             "type": "go",
             "request": "launch",
