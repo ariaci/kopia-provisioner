@@ -4,25 +4,29 @@ import (
 	_ "embed"
 	"fmt"
 	"runtime/debug"
+	"strconv"
+	"strings"
 )
 
 //go:embed VERSION
-var Version string
+var version SemVer
 
 type RevisionInfo struct {
 	Commit string
 	Dirty  bool
 }
 
+type SemVer string
+
 type Info struct {
-	Version  string
+	Version  SemVer
 	Revision RevisionInfo
 	Time     string
 }
 
 func Get() Info {
 	v := Info{
-		Version: Version,
+		Version: version,
 	}
 
 	bi, ok := debug.ReadBuildInfo()
@@ -44,6 +48,30 @@ func Get() Info {
 	return v
 }
 
+func (v SemVer) component(n int) uint {
+	parts := strings.SplitN(string(v), ".", 4)
+	if len(parts) <= n {
+		return 0
+	}
+	if i, err := strconv.Atoi(parts[n]); err == nil {
+		return uint(i)
+	}
+
+	return 0
+}
+
+func (v SemVer) Major() uint {
+	return v.component(0)
+}
+
+func (v SemVer) Minor() uint {
+	return v.component(1)
+}
+
+func (v SemVer) Patch() uint {
+	return v.component(2)
+}
+
 func (i RevisionInfo) Short() RevisionInfo {
 	c := i.Commit
 	if len(c) > 7 {
@@ -63,7 +91,7 @@ func (i RevisionInfo) String() string {
 
 	s := i.Commit
 	if i.Dirty {
-		s += "-dirty"
+		s += ".dirty"
 	}
 
 	return s
