@@ -11,11 +11,13 @@ import (
 //go:embed VERSION
 var version SemVer
 
+type Build RevisionInfo
 type RevisionInfo struct {
 	Commit string
 	Dirty  bool
 }
 
+type PreRelease string
 type SemVer string
 
 type Info struct {
@@ -49,7 +51,7 @@ func Get() Info {
 }
 
 func (v SemVer) component(n int) uint {
-	parts := strings.SplitN(string(v), ".", 4)
+	parts := strings.SplitN(string(v), ".", 3)
 	if len(parts) <= n {
 		return 0
 	}
@@ -61,15 +63,36 @@ func (v SemVer) component(n int) uint {
 }
 
 func (v SemVer) Major() uint {
-	return v.component(0)
+	return v.Core().component(0)
 }
 
 func (v SemVer) Minor() uint {
-	return v.component(1)
+	return v.Core().component(1)
 }
 
 func (v SemVer) Patch() uint {
-	return v.component(2)
+	return v.Core().component(2)
+}
+
+func (v SemVer) Core() SemVer {
+	parts := strings.SplitN(string(v), "-", 2)
+	return SemVer(parts[0])
+}
+
+func (v SemVer) PreRelease() PreRelease {
+	parts := strings.SplitN(string(v), "-", 2)
+	if len(parts) < 2 {
+		return ""
+	}
+	return PreRelease(parts[1])
+}
+
+func (p PreRelease) String() string {
+	if p == "" {
+		return ""
+	}
+
+	return "-" + string(p)
 }
 
 func (i RevisionInfo) Short() RevisionInfo {
@@ -82,6 +105,23 @@ func (i RevisionInfo) Short() RevisionInfo {
 		Commit: c,
 		Dirty:  i.Dirty,
 	}
+}
+
+func (i RevisionInfo) Build() Build {
+	return Build(i)
+}
+
+func (b Build) String() string {
+	if b.Commit == "" {
+		return ""
+	}
+
+	s := "+git." + b.Commit
+	if b.Dirty {
+		s += ".dirty"
+	}
+
+	return s
 }
 
 func (i RevisionInfo) String() string {
@@ -106,14 +146,14 @@ func (v Info) Short() Info {
 }
 
 func (v Info) String() string {
-	s := fmt.Sprintf("%s build: %s", v.Version, v.Revision)
-	if v.Time != "" {
-		s += fmt.Sprintf(" (%s)", v.Time)
-	}
-
-	return s
+	return fmt.Sprint(v.Version, v.Revision.Build())
 }
 
 func (v Info) Print() {
-	fmt.Println(v)
+	s := fmt.Sprint(v.Version, " build: ", v.Revision)
+	if v.Time != "" {
+		s += fmt.Sprint(" (", v.Time, ")")
+	}
+
+	fmt.Println(s)
 }

@@ -13,7 +13,7 @@ import (
 
 func main() {
 	v := version.Get()
-	ver := fmt.Sprintf("%s+git.%s", v.Version, v.Revision.Short())
+	ver := fmt.Sprint(v.Version, v.Revision.Short().Build())
 
 	args := []string{
 		"run",
@@ -32,7 +32,7 @@ func main() {
 		// StringFileInfo.OriginalFilename
 		"-original-name=kopia-provisioner.exe",
 		// StringFileInfo.PrivateBuild
-		fmt.Sprintf("-private-build=%s", v.Revision),
+		fmt.Sprint("-private-build=", v.Revision),
 		// FileVersion
 		fmt.Sprintf("-ver-major=%d", v.Version.Major()),
 		fmt.Sprintf("-ver-minor=%d", v.Version.Minor()),
@@ -44,11 +44,11 @@ func main() {
 		fmt.Sprintf("-product-ver-patch=%d", v.Version.Patch()),
 		"-product-ver-build=0",
 		// StringFileInfo.FileVersion
-		fmt.Sprintf("-file-version=%s", ver),
+		fmt.Sprint("-file-version=", ver),
 		// StringFileInfo.ProductVersion
-		fmt.Sprintf("-product-version=%s", ver),
+		fmt.Sprint("-product-version=", ver),
 		// StringFileInfo.FileDescription
-		fmt.Sprintf("-description=kopia-provisioner %s", ver),
+		fmt.Sprint("-description=kopia-provisioner ", ver),
 	}
 
 	if runtime.GOARCH != "386" {
