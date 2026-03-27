@@ -13,7 +13,10 @@ import (
 
 func main() {
 	v := version.Get()
-	ver := fmt.Sprint(v.Version, v.Revision.Short().Build())
+
+	b := v.Version.Build
+	v.Version.Build = v.Version.Build.ShortCommit()
+	ver := v.Version.String()
 
 	args := []string{
 		"run",
@@ -32,16 +35,16 @@ func main() {
 		// StringFileInfo.OriginalFilename
 		"-original-name=kopia-provisioner.exe",
 		// StringFileInfo.PrivateBuild
-		fmt.Sprint("-private-build=", v.Revision),
+		fmt.Sprint("-private-build=", b),
 		// FileVersion
-		fmt.Sprintf("-ver-major=%d", v.Version.Major()),
-		fmt.Sprintf("-ver-minor=%d", v.Version.Minor()),
-		fmt.Sprintf("-ver-patch=%d", v.Version.Patch()),
+		fmt.Sprintf("-ver-major=%d", v.Version.Core.Major),
+		fmt.Sprintf("-ver-minor=%d", v.Version.Core.Minor),
+		fmt.Sprintf("-ver-patch=%d", v.Version.Core.Patch),
 		"-ver-build=0",
 		// ProductVersion
-		fmt.Sprintf("-product-ver-major=%d", v.Version.Major()),
-		fmt.Sprintf("-product-ver-minor=%d", v.Version.Minor()),
-		fmt.Sprintf("-product-ver-patch=%d", v.Version.Patch()),
+		fmt.Sprintf("-product-ver-major=%d", v.Version.Core.Major),
+		fmt.Sprintf("-product-ver-minor=%d", v.Version.Core.Minor),
+		fmt.Sprintf("-product-ver-patch=%d", v.Version.Core.Patch),
 		"-product-ver-build=0",
 		// StringFileInfo.FileVersion
 		fmt.Sprint("-file-version=", ver),

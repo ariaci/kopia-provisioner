@@ -3,32 +3,43 @@ package version
 import (
 	_ "embed"
 	"fmt"
+	"regexp"
 	"runtime/debug"
 	"strconv"
-	"strings"
 )
 
 //go:embed VERSION
-var version SemVer
+var version string
 
-type Build RevisionInfo
-type RevisionInfo struct {
+var semverCoreRe = regexp.MustCompile(
+	`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`,
+)
+
+type Core struct {
+	Major uint
+	Minor uint
+	Patch uint
+}
+type PreRelease string
+type Build struct {
 	Commit string
 	Dirty  bool
 }
 
-type PreRelease string
-type SemVer string
+type SemVer struct {
+	Core       Core
+	PreRelease PreRelease
+	Build      Build
+}
 
 type Info struct {
-	Version  SemVer
-	Revision RevisionInfo
-	Time     string
+	Version SemVer
+	Time    string
 }
 
 func Get() Info {
 	v := Info{
-		Version: version,
+		Version: MustParseSemVerCore(version),
 	}
 
 	bi, ok := debug.ReadBuildInfo()
@@ -39,9 +50,9 @@ func Get() Info {
 	for _, s := range bi.Settings {
 		switch s.Key {
 		case "vcs.revision":
-			v.Revision.Commit = s.Value
+			v.Version.Build.Commit = s.Value
 		case "vcs.modified":
-			v.Revision.Dirty = (s.Value == "true")
+			v.Version.Build.Dirty = (s.Value == "true")
 		case "vcs.time":
 			v.Time = s.Value
 		}
@@ -50,65 +61,32 @@ func Get() Info {
 	return v
 }
 
-func (v SemVer) component(n int) uint {
-	parts := strings.SplitN(string(v), ".", 3)
-	if len(parts) <= n {
-		return 0
-	}
-	if i, err := strconv.Atoi(parts[n]); err == nil {
-		return uint(i)
-	}
-
-	return 0
+func (c Core) String() string {
+	return fmt.Sprintf("%d.%d.%d", c.Major, c.Minor, c.Patch)
 }
 
-func (v SemVer) Major() uint {
-	return v.Core().component(0)
-}
-
-func (v SemVer) Minor() uint {
-	return v.Core().component(1)
-}
-
-func (v SemVer) Patch() uint {
-	return v.Core().component(2)
-}
-
-func (v SemVer) Core() SemVer {
-	parts := strings.SplitN(string(v), "-", 2)
-	return SemVer(parts[0])
-}
-
-func (v SemVer) PreRelease() PreRelease {
-	parts := strings.SplitN(string(v), "-", 2)
-	if len(parts) < 2 {
-		return ""
-	}
-	return PreRelease(parts[1])
+func (p PreRelease) HasValue() bool {
+	return len(p) > 0
 }
 
 func (p PreRelease) String() string {
-	if p == "" {
-		return ""
-	}
-
-	return "-" + string(p)
+	return string(p)
 }
 
-func (i RevisionInfo) Short() RevisionInfo {
-	c := i.Commit
+func (b Build) ShortCommit() Build {
+	c := b.Commit
 	if len(c) > 7 {
 		c = c[:7]
 	}
 
-	return RevisionInfo{
+	return Build{
 		Commit: c,
-		Dirty:  i.Dirty,
+		Dirty:  b.Dirty,
 	}
 }
 
-func (i RevisionInfo) Build() Build {
-	return Build(i)
+func (b Build) HasCommit() bool {
+	return b.Commit != ""
 }
 
 func (b Build) String() string {
@@ -116,44 +94,69 @@ func (b Build) String() string {
 		return ""
 	}
 
-	s := "+git." + b.Commit
 	if b.Dirty {
-		s += ".dirty"
+		return b.Commit + ".dirty"
+	}
+	return b.Commit
+}
+
+func mustUint(s string) uint {
+	v, _ := strconv.ParseUint(s, 10, 64)
+	return uint(v)
+}
+
+func ParseSemVerCore(s string) (SemVer, error) {
+	m := semverCoreRe.FindStringSubmatch(s)
+	if m == nil {
+		return SemVer{}, fmt.Errorf("invalid SemVer in VERSION file: %s", s)
+	}
+
+	return SemVer{
+		Core: Core{
+			Major: mustUint(m[1]),
+			Minor: mustUint(m[2]),
+			Patch: mustUint(m[3]),
+		},
+		PreRelease: PreRelease(m[4]),
+	}, nil
+}
+
+func MustParseSemVerCore(s string) SemVer {
+	v, err := ParseSemVerCore(s)
+	if err != nil {
+		panic(fmt.Sprintf("invalid version: %v", err))
+	}
+
+	return v
+}
+
+func (v SemVer) String() string {
+	s := fmt.Sprint(v.Core)
+	if v.PreRelease.HasValue() {
+		s += fmt.Sprint("-", v.PreRelease)
+	}
+	if v.Build.HasCommit() {
+		s += fmt.Sprint("+git.", v.Build)
 	}
 
 	return s
 }
 
-func (i RevisionInfo) String() string {
-	if i.Commit == "" {
-		return "unknown"
-	}
+func (i Info) String() string {
+	v := i.Version
+	v.Build = Build{}
 
-	s := i.Commit
-	if i.Dirty {
-		s += ".dirty"
+	s := fmt.Sprint(v, " build: ")
+
+	c := "unknown"
+	if i.Version.Build.HasCommit() {
+		c = fmt.Sprint(i.Version.Build)
+	}
+	s += c
+
+	if i.Time != "" {
+		s += fmt.Sprint(" (", i.Time, ")")
 	}
 
 	return s
-}
-
-func (v Info) Short() Info {
-	return Info{
-		Version:  v.Version,
-		Revision: v.Revision.Short(),
-		Time:     v.Time,
-	}
-}
-
-func (v Info) String() string {
-	return fmt.Sprint(v.Version, v.Revision.Build())
-}
-
-func (v Info) Print() {
-	s := fmt.Sprint(v.Version, " build: ", v.Revision)
-	if v.Time != "" {
-		s += fmt.Sprint(" (", v.Time, ")")
-	}
-
-	fmt.Println(s)
 }
