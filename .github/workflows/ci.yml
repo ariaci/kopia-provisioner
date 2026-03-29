@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: 386
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+          - os: windows-latest
+            goos: windows
+            goarch: 386
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: darwin
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Map GOARCH to friendly arch
+        id: archmap
+        run: |
+          case "${{ matrix.goarch }}" in
+            amd64) echo "arch=x64" >> $GITHUB_OUTPUT ;;
+            386)   echo "arch=x86" >> $GITHUB_OUTPUT ;;
+            arm64) echo "arch=arm64" >> $GITHUB_OUTPUT ;;
+            arm)   echo "arch=arm" >> $GITHUB_OUTPUT ;;
+            *)     echo "arch=${{ matrix.goarch }}" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.1"
+
+      - name: Determine executable extension
+        id: executable
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          echo ext=$(go env GOEXE) >> $GITHUB_OUTPUT
+
+      - name: Generate files
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go generate ./...
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -o kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ steps.archmap.outputs.arch }}${{ steps.executable.outputs.ext }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ steps.archmap.outputs.arch }}${{ steps.executable.outputs.ext }}
+
+  source:
+    name: Source Archives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create tar.gz
+        run: |
+          git archive --format tar.gz --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.tar.gz HEAD
+
+      - name: Create zip
+        run: |
+          git archive --format zip --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.zip HEAD
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: |
+            kopia-provisioner-${{ github.ref_name }}-source.tar.gz
+            kopia-provisioner-${{ github.ref_name }}-source.zip
+
+  release:
+    name: Create Release
+    needs: [build, source]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+
+      - name: Create GitHub Release
+        if: ${{ !env.ACT }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**/*
