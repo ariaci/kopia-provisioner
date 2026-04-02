@@ -10,61 +10,39 @@ jobs:
     name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest]
+        goos: [linux, windows, darwin]
+        goarch: [amd64, 386, arm64, arm]
+
         include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-          - os: ubuntu-latest
-            goos: linux
+          # Friendly names
+          - goarch: amd64
+            archname: x64
+          - goarch: 386
+            archname: x86
+          # Windows extension
+          - goos: windows
+            goext: .exe
+            
+        exclude:
+          # Darwin supports only 64-bit
+          - goos: darwin
             goarch: 386
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-          - os: ubuntu-latest
-            goos: linux
+          - goos: darwin
             goarch: arm
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-          - os: windows-latest
-            goos: windows
-            goarch: 386
-          - os: ubuntu-latest
-            goos: darwin
-            goarch: amd64
-          - os: ubuntu-latest
-            goos: darwin
-            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Map GOARCH to friendly arch
-        id: archmap
-        run: |
-          case "${{ matrix.goarch }}" in
-            amd64) echo "arch=x64" >> $GITHUB_OUTPUT ;;
-            386)   echo "arch=x86" >> $GITHUB_OUTPUT ;;
-            arm64) echo "arch=arm64" >> $GITHUB_OUTPUT ;;
-            arm)   echo "arch=arm" >> $GITHUB_OUTPUT ;;
-            *)     echo "arch=${{ matrix.goarch }}" >> $GITHUB_OUTPUT ;;
-          esac
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.26.1"
 
-      - name: Determine executable extension
-        id: executable
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          echo ext=$(go env GOEXE) >> $GITHUB_OUTPUT
-
       - name: Generate files
+        if: ${{ !env.ACT }}
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -75,13 +53,13 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ steps.archmap.outputs.arch }}${{ steps.executable.outputs.ext }}
+          go build -o kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ steps.archmap.outputs.arch }}${{ steps.executable.outputs.ext }}
+          path: kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
 
   source:
     name: Source Archives
@@ -114,10 +92,16 @@ jobs:
         with:
           path: artifacts
 
+      - name: Flatten artifact directory
+        run: |
+          cd artifacts
+          find . -mindepth 2 -type f -print0 | xargs -0 -I{} mv "{}" .
+          find . -mindepth 1 -type d -empty -delete
+
       - name: Generate SHA256SUMS
         run: |
           cd artifacts
-          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          find . -type f -printf "%P\0" | sort -z | xargs -0 sha256sum > SHA256SUMS
 
       - name: Create GitHub Release
         if: ${{ !env.ACT }}
@@ -125,3 +109,10 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: artifacts/**/*
+
+      - name: Upload artifacts for ACT testing
+        if: ${{ env.ACT }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: act-release-artifacts
+          path: artifacts/*

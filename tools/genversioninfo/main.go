@@ -4,58 +4,75 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
+	"path/filepath"
 
 	"kopia-provisioner/version"
-
-	_ "github.com/josephspurrier/goversioninfo"
 )
 
-func main() {
+func createVersionInfoJSON() string {
 	v := version.Get()
 
 	b := v.Version.Build
 	v.Version.Build = v.Version.Build.ShortCommit()
 	ver := v.Version.String()
 
-	args := []string{
-		"run",
-		"github.com/josephspurrier/goversioninfo/cmd/goversioninfo",
-		// General
-		"-skip-versioninfo",
-		"-o=../../version/versioninfo_windows.syso",
-		// StringFileInfo.CompanyName
-		"-company=ariaci",
-		// StringFileInfo.InternalName
-		"-internal-name=kopia-provisioner",
-		// StringFileInfo.ProductName
-		"-product-name=kopia-provisioner",
-		// StringFileInfo.LegalCopyright
-		"-copyright=© ariaci. Licensed under MIT.",
-		// StringFileInfo.OriginalFilename
-		"-original-name=kopia-provisioner.exe",
-		// StringFileInfo.PrivateBuild
-		fmt.Sprint("-private-build=", b),
-		// FileVersion
-		fmt.Sprintf("-ver-major=%d", v.Version.Core.Major),
-		fmt.Sprintf("-ver-minor=%d", v.Version.Core.Minor),
-		fmt.Sprintf("-ver-patch=%d", v.Version.Core.Patch),
-		"-ver-build=0",
-		// ProductVersion
-		fmt.Sprintf("-product-ver-major=%d", v.Version.Core.Major),
-		fmt.Sprintf("-product-ver-minor=%d", v.Version.Core.Minor),
-		fmt.Sprintf("-product-ver-patch=%d", v.Version.Core.Patch),
-		"-product-ver-build=0",
-		// StringFileInfo.FileVersion
-		fmt.Sprint("-file-version=", ver),
-		// StringFileInfo.ProductVersion
-		fmt.Sprint("-product-version=", ver),
-		// StringFileInfo.FileDescription
-		fmt.Sprint("-description=kopia-provisioner ", ver),
+	content := fmt.Sprintf(`{
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "%d.%d.%d.0",
+          "product_version": "%d.%d.%d.0"
+        },
+        "info": {
+          "0409": {
+            "CompanyName": "ariaci",
+            "FileDescription": "kopia-provisioner %s",
+            "FileVersion": "%s",
+            "InternalName": "kopia-provisioner",
+            "LegalCopyright": "© ariaci. Licensed under MIT.",
+            "OriginalFilename": "kopia-provisioner.exe",
+            "PrivateBuild": "%s",
+            "ProductName": "kopia-provisioner",
+            "ProductVersion": "%s"
+          }
+        }
+      }
+    }
+  }
+}`,
+		v.Version.Core.Major, v.Version.Core.Minor, v.Version.Core.Patch,
+		v.Version.Core.Major, v.Version.Core.Minor, v.Version.Core.Patch,
+		ver, ver, b, ver)
+
+	tmpFile, err := os.CreateTemp("", "kopia-provisioner-versioninfo-*.winres.json")
+	if err != nil {
+		panic(err)
+	}
+	defer tmpFile.Close()
+
+	if _, err := tmpFile.WriteString(content); err != nil {
+		panic(err)
 	}
 
-	if runtime.GOARCH != "386" {
-		args = append(args, "-64")
+	path, err := filepath.Abs(tmpFile.Name())
+	if err != nil {
+		panic(err)
+	}
+
+	return path
+}
+
+func main() {
+	versioninfo_json := createVersionInfoJSON()
+	defer os.Remove(versioninfo_json)
+
+	args := []string{
+		"run",
+		"github.com/tc-hib/go-winres",
+		"make",
+		"--in", versioninfo_json,
+		"--out", "../../version/winres",
 	}
 
 	cmd := exec.Command("go", args...)
