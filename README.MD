@@ -32,7 +32,8 @@ Or build manually:
 ```bash
 git clone https://github.com/ariaci/kopia-provisioner 
 cd kopia-provisioner 
-go build -o kopia-provisioner
+go generate ./...
+go build -o ./build/kopia-provisioner
 ```
 
 ## 🧩 Configuration
