@@ -70,7 +70,6 @@ func main() {
 	for _, a := range []winres.Arch{
 		winres.ArchI386,
 		winres.ArchAMD64,
-		winres.ArchARM,
 		winres.ArchARM64,
 	} {
 		writeWinResResources(rs, a)
