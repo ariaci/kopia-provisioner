@@ -21,18 +21,30 @@ The design emphasizes modularity, predictable behavior, and clean separation of 
 
 ## 📦 Installation
 
-Using Go:
+### Using Go
 
 ```bash
 go install github.com/ariaci/kopia-provisioner@latest
 ```
 
-Or build manually:
+### Build manually
+
+#### Using Linux
 
 ```bash
 git clone https://github.com/ariaci/kopia-provisioner 
 cd kopia-provisioner 
-go build -o kopia-provisioner
+go generate ./...
+go build -o .build/kopia-provisioner
+```
+
+#### Using Windows
+
+```bat
+git clone https://github.com/ariaci/kopia-provisioner 
+cd kopia-provisioner 
+go generate ./...
+go build -o .build/kopia-provisioner.exe
 ```
 
 ## 🧩 Configuration

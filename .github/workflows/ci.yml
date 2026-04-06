@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        goos: [linux, windows, darwin]
+        goarch: [amd64, 386, arm64, arm]
+
+        include:
+          # Friendly names
+          - goarch: amd64
+            archname: x64
+          - goarch: 386
+            archname: x86
+          # Windows extension
+          - goos: windows
+            goext: .exe
+            
+        exclude:
+          # Windows does not support arm 32-bit
+          - goos: windows
+            goarch: arm
+          # Darwin supports only 64-bit
+          - goos: darwin
+            goarch: 386
+          - goos: darwin
+            goarch: arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.1"
+
+      - name: Generate files
+        run: go generate ./...
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -o .build/kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: .build/kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
+
+  source:
+    name: Source Archives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create tar.gz
+        run: |
+          git archive --format tar.gz --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.tar.gz HEAD
+
+      - name: Create zip
+        run: |
+          git archive --format zip --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.zip HEAD
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: |
+            kopia-provisioner-${{ github.ref_name }}-source.tar.gz
+            kopia-provisioner-${{ github.ref_name }}-source.zip
+
+  release:
+    name: Create Release
+    needs: [build, source]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifact directory
+        run: |
+          cd artifacts
+          find . -mindepth 2 -type f -print0 | xargs -0 -I{} mv "{}" .
+          find . -mindepth 1 -type d -empty -delete
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -type f -printf "%P\0" | sort -z | xargs -0 sha256sum > SHA256SUMS
+
+      - name: Create GitHub Release
+        if: ${{ !env.ACT }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: artifacts/**/*
+
+      - name: Upload artifacts for ACT testing
+        if: ${{ env.ACT }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: act-release-artifacts
+          path: artifacts/*
