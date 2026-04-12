@@ -7,7 +7,7 @@ import (
 )
 
 var usersAddCmd = &cobra.Command{
-	Use:   "add <config.yaml>",
+	Use:   "add <user-definitions-file>",
 	Short: "Adds and optionally updates Kopia identities based on the YAML configuration",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

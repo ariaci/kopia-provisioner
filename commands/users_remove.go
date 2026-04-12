@@ -7,7 +7,7 @@ import (
 )
 
 var usersRemoveCmd = &cobra.Command{
-	Use:   "remove <config.yaml>",
+	Use:   "remove <user-definitions-file>",
 	Short: "Removes and optionally updates Kopia identities based on the YAML configuration",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
