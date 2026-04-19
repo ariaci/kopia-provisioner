@@ -5,12 +5,57 @@ on:
     tags:
       - "v*"
 
+env:
+  GO_VERSION: "1.26.1"
+  OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
+
 permissions:
   contents: write
 
 jobs:
+  license:
+    name: Source Archives
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Go tools
+        run: go install github.com/google/go-licenses/v2@latest
+
+      - name: Generate license files
+        run: |
+          go mod download
+          go-licenses save ./... --save_path .build/${{ env.OUTPUT_BASE_NAME }}/kopia-provisioner --force
+          cd tools/genversioninfo
+          go mod download
+          go-licenses save ./... --save_path ../../.build/${{ env.OUTPUT_BASE_NAME }}/tools/genversioninfo --force
+
+      - name: Create tar.gz
+        run: |
+          cd .build
+          tar -czf ${OUTPUT_BASE_NAME}-licenses.tar.gz ${OUTPUT_BASE_NAME}/
+
+      - name: Create zip
+        run: |
+          cd .build
+          zip -r ${OUTPUT_BASE_NAME}-licenses.zip ${OUTPUT_BASE_NAME}/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: licenses
+          path: |
+            .build/${{ env.OUTPUT_BASE_NAME }}-licenses.zip
+            .build/${{ env.OUTPUT_BASE_NAME }}-licenses.tar.gz
+
   build:
     name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
+    needs: [license]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -28,6 +73,7 @@ jobs:
           # Windows extension
           - goos: windows
             goext: .exe
+            archive: .zip
             
         exclude:
           # Windows does not support arm 32-bit
@@ -38,14 +84,18 @@ jobs:
             goarch: 386
           - goos: darwin
             goarch: arm
-
+    
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.26.1"
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Compute target name
+        run: |
+          echo "TARGET_NAME=${{ env.OUTPUT_BASE_NAME }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}" >> $GITHUB_ENV
 
       - name: Generate files
         run: go generate ./...
@@ -55,38 +105,58 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o .build/kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
+          go build -o .build/${{ env.OUTPUT_BASE_NAME }}/${TARGET_NAME}${{ matrix.goext }}
+
+      - name: Package binary
+        if: ${{ matrix.archive == '.zip' }}
+        run: |
+          cd .build
+          zip -r ${TARGET_NAME}.zip ./
+      - name: Package binary
+        if: ${{ matrix.archive != '.zip' }}
+        run: |
+          cd .build
+          tar -czf ${TARGET_NAME}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: .build/kopia-provisioner-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}${{ matrix.goext }}
+          path: |
+            .build/${{ env.TARGET_NAME }}.tar.gz
+            .build/${{ env.TARGET_NAME }}.zip
 
   source:
     name: Source Archives
+    needs: [license]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Create tar.gz
         run: |
-          git archive --format tar.gz --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.tar.gz HEAD
+          git archive --format tar.gz --prefix=${{ env.OUTPUT_BASE_NAME }}/ -o ${{ env.OUTPUT_BASE_NAME }}-source.tar.gz HEAD
+
+#      - name: Add licenses to tar.gz
+#        run: |
+#          gunzip ${{ env.OUTPUT_BASE_NAME }}-source.tar.gz
+#          tar -rf ${{ env.OUTPUT_BASE_NAME }}-source.tar --transform 's,^,${{ env.OUTPUT_BASE_NAME }}/,' licenses
+#          gzip ${{ env.OUTPUT_BASE_NAME }}-source.tar
 
       - name: Create zip
         run: |
-          git archive --format zip --prefix=kopia-provisioner-${{ github.ref_name }}/ -o kopia-provisioner-${{ github.ref_name }}-source.zip HEAD
+          git archive --format zip --prefix=${{ env.OUTPUT_BASE_NAME }}/ -o ${{ env.OUTPUT_BASE_NAME }}-source.zip HEAD
 
       - uses: actions/upload-artifact@v4
         with:
           name: source
           path: |
-            kopia-provisioner-${{ github.ref_name }}-source.tar.gz
-            kopia-provisioner-${{ github.ref_name }}-source.zip
+            ${{ env.OUTPUT_BASE_NAME }}-source.tar.gz
+            ${{ env.OUTPUT_BASE_NAME }}-source.zip
 
   release:
     name: Create Release
-    needs: [build, source]
+    needs: [build, source, license]
     runs-on: ubuntu-latest
 
     steps:
