@@ -1,6 +1,10 @@
 package commands
 
 import (
+	"kopia-provisioner/actions"
+	"kopia-provisioner/identity"
+	"strings"
+
 	"github.com/spf13/cobra"
 )
 
@@ -15,4 +19,20 @@ func addCommonConfigFlags(cmd *cobra.Command) {
 
 func init() {
 	rootCmd.AddCommand(configCmd)
+}
+
+func makeConfigInitActionContext() actions.ConfigInitActionContext {
+	var context = actions.ConfigInitActionContext{
+		Identities: identity.BuildIdentities(
+			identity.BuildIdentitiesContext{
+				Sources:             identity.SourceKopia,
+				KopiaRepoConfigPath: configFile,
+			}),
+	}
+
+	if cfgFile := strings.TrimSpace(configFile); len(cfgFile) > 0 {
+		context.ConfigFile = cfgFile
+	}
+
+	return context
 }

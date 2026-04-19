@@ -44,6 +44,13 @@ func newIdentityFromUserAndHost(user, host string) Identity {
 	}
 }
 
+func (e Identity) Compare(other Identity) int {
+	if r := strings.Compare(e.User, other.User); r != 0 {
+		return r
+	}
+	return strings.Compare(e.Host, other.Host)
+}
+
 func (id Identity) String() string {
 	return id.User + "@" + id.Host
 }
@@ -66,7 +73,7 @@ func merge[T any](
 	}
 }
 
-func (i Identities) addKopiaIdentities(kids kopiaIdentities) {
+func (i Identities) addKopiaIdentities(kids KopiaIdentities) {
 	merge(i, kids, func(info IdentityInfo, config KopiaIdentityConfig) IdentityInfo {
 		return IdentityInfo{
 			Kopia:       config,
@@ -114,14 +121,20 @@ func (e IdentityEntry) Compare(other IdentityEntry) int {
 }
 
 type BuildIdentitiesContext struct {
+	Sources               IdentitySource
 	KopiaRepoConfigPath   string
 	ProvisionerConfigPath string
 }
 
 func BuildIdentities(context BuildIdentitiesContext) Identities {
 	identities := make(Identities)
-	identities.addKopiaIdentities(loadKopiaIdentities(context.KopiaRepoConfigPath))
-	identities.addProvisionerIdentities(loadProvisionerIdentities(context.ProvisionerConfigPath))
+
+	if context.Sources&SourceKopia != 0 {
+		identities.addKopiaIdentities(LoadKopiaIdentities(context.KopiaRepoConfigPath))
+	}
+	if context.Sources&SourceProvisioner != 0 {
+		identities.addProvisionerIdentities(loadProvisionerIdentities(context.ProvisionerConfigPath))
+	}
 
 	return identities
 }

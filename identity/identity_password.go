@@ -12,9 +12,9 @@ type Password interface {
 }
 
 type PasswordWrapper struct {
-	Password
-	Type  string
-	Value string
+	Password `yaml:"-"`
+	Type     string `yaml:"-"`
+	Value    string `yaml:"-"`
 }
 
 type NilPassword struct {

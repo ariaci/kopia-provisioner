@@ -7,8 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type config struct {
-	Users map[string]userConfig `yaml:"users"`
+type Config struct {
+	Users map[string]UserConfig `yaml:"users"`
 }
 
 type ProvisionerIdentityHost struct {
@@ -17,20 +17,20 @@ type ProvisionerIdentityHost struct {
 }
 type ProvisionerIdentityHosts map[string]ProvisionerIdentityConfig
 
-type userConfig struct {
+type UserConfig struct {
 	Default ProvisionerIdentityConfig `yaml:"default"`
 	Hosts   ProvisionerIdentityHosts  `yaml:"hosts"`
 }
 
 type ProvisionerIdentityConfig struct {
-	Line     int
-	Password PasswordWrapper `yaml:"password"`
+	Line     int             `yaml:"-"`
+	Password PasswordWrapper `yaml:"password,omitempty"`
 }
 type ProvisionerIdentityConfigRaw ProvisionerIdentityConfig
 
 type provisionerIdentities map[Identity]ProvisionerIdentityConfig
 
-func (c config) makeIdentities(context ProviderPipelineContext) provisionerIdentities {
+func (c Config) makeIdentities(context ProviderPipelineContext) provisionerIdentities {
 	identities := make(provisionerIdentities)
 
 	for user, userConfig := range c.Users {
@@ -63,6 +63,10 @@ func (c *ProvisionerIdentityConfig) UnmarshalYAML(node *yaml.Node) error {
 	c.Line = node.Line
 
 	return nil
+}
+
+func (w PasswordWrapper) MarshalYAML() (any, error) {
+	return fmt.Sprint(w.Type, ":", w.Value), nil
 }
 
 func (c ProvisionerIdentityConfig) Compare(other ProvisionerIdentityConfig) int {
@@ -137,7 +141,7 @@ func loadProvisionerIdentities(configPath string) provisionerIdentities {
 		panic(err)
 	}
 
-	var cfg config
+	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		panic(err)
 	}
