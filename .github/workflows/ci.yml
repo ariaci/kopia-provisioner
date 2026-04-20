@@ -105,18 +105,30 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o .build/${{ env.OUTPUT_BASE_NAME }}/${TARGET_NAME}${{ matrix.goext }}
+          go build -o .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${TARGET_NAME}${{ matrix.goext }}
 
-      - name: Package binary
+      - uses: actions/download-artifact@v4
+        with:
+          name: licenses
+          path: .build/
+
+      - name: Add licenses
+        run: |
+          cd .build
+          unzip *-licenses.zip -d ./licenses
+          mkdir -p artifacts/${{ env.OUTPUT_BASE_NAME }}/licenses
+          mv ./licenses/*/* ./artifacts/${{ env.OUTPUT_BASE_NAME }}/licenses
+
+      - name: Package artifacts
         if: ${{ matrix.archive == '.zip' }}
         run: |
-          cd .build
-          zip -r ${TARGET_NAME}.zip ./
-      - name: Package binary
+          cd .build/artifacts
+          zip -r ../${TARGET_NAME}.zip ./
+      - name: Package artifacts
         if: ${{ matrix.archive != '.zip' }}
         run: |
-          cd .build
-          tar -czf ${TARGET_NAME}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
+          cd .build/artifacts
+          tar -czf ../${TARGET_NAME}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
