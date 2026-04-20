@@ -201,7 +201,8 @@ jobs:
       - name: Generate SHA256SUMS
         run: |
           cd artifacts
-          find . -type f -printf "%P\0" | sort -z | xargs -0 sha256sum > SHA256SUMS
+          find . -type f -printf "%P\0" | sort -z | xargs -0 sha256sum >../SHA256SUMS
+          mv ../SHA256SUMS .
 
       - name: Create GitHub Release
         if: ${{ !env.ACT }}
