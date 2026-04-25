@@ -30,6 +30,9 @@ func makeConfigInitActionContext() (actions.ConfigInitActionContext, error) {
 					KopiaRepoConfigPath: configFile,
 				}),
 		},
+		Scope: actions.ScopeConfig{
+			Password: actions.PasswordScopeIdentity,
+		},
 	}
 
 	if cfgFile := strings.TrimSpace(configFile); len(cfgFile) > 0 {

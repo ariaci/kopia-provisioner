@@ -83,6 +83,22 @@ users:
 
 ## 🚀 Running the provisioner
 
+### Set up an initial yaml configuration
+
+```bash
+kopia-provisioner config init [-s|--scope password:{user|identity}] [-c|--config-file <kopia-repository>.config]
+```
+
+1) Determine all identities and users from the given repository
+2) Generate an initial YAML configuration containing these entries
+3) Add a ```nil:``` placeholder password for each identity/user based on configured password-scope (defaults to ```identity``` if no password scope is given)
+4) Print the resulting configuration to stdout
+
+Example:
+```bash
+kopia-provisioner config init --scope password:user > users.yaml
+```
+
 ### Synchronize users with Kopia
 
 ```bash
