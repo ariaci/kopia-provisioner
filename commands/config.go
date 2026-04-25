@@ -21,18 +21,25 @@ func init() {
 	rootCmd.AddCommand(configCmd)
 }
 
-func makeConfigInitActionContext() actions.ConfigInitActionContext {
+func makeConfigInitActionContext() (actions.ConfigInitActionContext, error) {
 	var context = actions.ConfigInitActionContext{
-		Identities: identity.BuildIdentities(
-			identity.BuildIdentitiesContext{
-				Sources:             identity.SourceKopia,
-				KopiaRepoConfigPath: configFile,
-			}),
+		ConfigActionContext: actions.ConfigActionContext{
+			Identities: identity.BuildIdentities(
+				identity.BuildIdentitiesContext{
+					Sources:             identity.SourceKopia,
+					KopiaRepoConfigPath: configFile,
+				}),
+		},
 	}
 
 	if cfgFile := strings.TrimSpace(configFile); len(cfgFile) > 0 {
 		context.ConfigFile = cfgFile
 	}
 
-	return context
+	for _, entry := range scopeEntries {
+		if err := context.Scope.Apply(entry); err != nil {
+			return context, err
+		}
+	}
+	return context, nil
 }

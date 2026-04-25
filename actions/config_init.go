@@ -12,10 +12,18 @@ func (context ConfigInitActionContext) Execute() error {
 	for ids := range context.iterateIdentities() {
 		u := identity.UserConfig{}
 		u.Hosts = make(map[string]identity.ProvisionerIdentityConfig)
-		u.Default.Password.Type = "nil"
-		for _, id := range ids {
-			u.Hosts[id.Identity.Host] = identity.ProvisionerIdentityConfig{}
+		if context.Scope.Password == PasswordScopeUser {
+			u.Default.Password.Type = "nil"
 		}
+
+		for _, id := range ids {
+			config := identity.ProvisionerIdentityConfig{}
+			if context.Scope.Password == PasswordScopeIdentity {
+				config.Password.Type = "nil"
+			}
+			u.Hosts[id.Identity.Host] = config
+		}
+
 		c.Users[ids[0].Identity.User] = u
 	}
 

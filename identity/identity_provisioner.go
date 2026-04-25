@@ -30,6 +30,30 @@ type ProvisionerIdentityConfigRaw ProvisionerIdentityConfig
 
 type provisionerIdentities map[Identity]ProvisionerIdentityConfig
 
+func findLineForKey(r *yaml.Node, key string) int {
+	for i := 0; i < len(r.Content); i += 2 {
+		if r.Content[i].Value == key {
+			return r.Content[i].Line
+		}
+	}
+
+	return 0
+}
+
+func loadProvisionerIdentities(configPath string) provisionerIdentities {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		panic(err)
+	}
+
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		panic(err)
+	}
+
+	return cfg.makeIdentities(newProviderPipelineContext(configPath))
+}
+
 func (c Config) makeIdentities(context ProviderPipelineContext) provisionerIdentities {
 	identities := make(provisionerIdentities)
 
@@ -65,10 +89,6 @@ func (c *ProvisionerIdentityConfig) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
-func (w PasswordWrapper) MarshalYAML() (any, error) {
-	return fmt.Sprint(w.Type, ":", w.Value), nil
-}
-
 func (c ProvisionerIdentityConfig) Compare(other ProvisionerIdentityConfig) int {
 	switch {
 	case c.Line < other.Line:
@@ -89,16 +109,6 @@ func (h *ProvisionerIdentityHost) UnmarshalYAML(node *yaml.Node) error {
 	}
 
 	return fmt.Errorf("host must be a string, not a map")
-}
-
-func findLineForKey(r *yaml.Node, key string) int {
-	for i := 0; i < len(r.Content); i += 2 {
-		if r.Content[i].Value == key {
-			return r.Content[i].Line
-		}
-	}
-
-	return 0
 }
 
 func (h *ProvisionerIdentityHosts) fixMissingLines(node *yaml.Node) {
@@ -135,16 +145,6 @@ func (h *ProvisionerIdentityHosts) UnmarshalYAML(node *yaml.Node) error {
 	return fmt.Errorf("hosts must be either a list of strings or a map[string]ProvisionerIdentityConfig")
 }
 
-func loadProvisionerIdentities(configPath string) provisionerIdentities {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		panic(err)
-	}
-
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		panic(err)
-	}
-
-	return cfg.makeIdentities(newProviderPipelineContext(configPath))
+func (w PasswordWrapper) MarshalYAML() (any, error) {
+	return fmt.Sprint(w.Type, ":", w.Value), nil
 }
