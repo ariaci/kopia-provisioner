@@ -7,27 +7,54 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func (context ConfigInitActionContext) Execute() error {
-	c := identity.Config{Users: make(map[string]identity.UserConfig)}
-	for ids := range context.iterateIdentities() {
-		u := identity.UserConfig{}
-		u.Hosts = make(map[string]identity.ProvisionerIdentityConfig)
-		if context.Scope.Password == PasswordScopeUser {
-			u.Default.Password.Type = "nil"
-		}
+func (context ConfigInitActionContext) buildUserConfig(ids identity.IdentityEntries) (identity.UserConfig, error) {
+	u := identity.UserConfig{}
+	u.Hosts = make(map[string]identity.ProvisionerIdentityConfig)
 
-		for _, id := range ids {
-			config := identity.ProvisionerIdentityConfig{}
-			if context.Scope.Password == PasswordScopeIdentity {
-				config.Password.Type = "nil"
-			}
-			u.Hosts[id.Identity.Host] = config
-		}
+	c := identity.ProvisionerIdentityConfig{}
 
-		c.Users[ids[0].Identity.User] = u
+	switch context.Scope.Password {
+	case PasswordScopeUser:
+		u.Default.Password.Type = "nil"
+	case PasswordScopeIdentity:
+		// identity scope → handled below per-host
+	default:
+		// default = identity
+		c.Password.Type = "nil"
 	}
 
-	out, _ := yaml.Marshal(c)
+	for _, id := range ids {
+		u.Hosts[id.Identity.Host] = c
+	}
+
+	return u, nil
+}
+
+func (context ConfigInitActionContext) buildConfig() (identity.Config, error) {
+	c := identity.Config{Users: make(map[string]identity.UserConfig)}
+	for ids := range context.iterateIdentities() {
+		u, err := context.buildUserConfig(ids)
+		if err != nil {
+			return identity.Config{}, fmt.Errorf("failed to build user config: %w", err)
+		}
+
+		user := ids[0].Identity.User // guaranteed by iterateIdentities grouping
+		c.Users[user] = u
+	}
+
+	return c, nil
+}
+
+func (context ConfigInitActionContext) Execute() error {
+	c, err := context.buildConfig()
+	if err != nil {
+		return fmt.Errorf("failed to build config: %w", err)
+	}
+
+	out, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 
 	fmt.Println(string(out))
 	return nil
