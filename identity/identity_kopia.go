@@ -9,7 +9,20 @@ import (
 type KopiaIdentityConfig struct {
 	Line int
 }
-type kopiaIdentities map[Identity]KopiaIdentityConfig
+type KopiaIdentities map[Identity]KopiaIdentityConfig
+
+type KopiaIdentityEntry struct {
+	Identity Identity
+	Config   KopiaIdentityConfig
+}
+type KopiaIdentityEntries []KopiaIdentityEntry
+
+func (e KopiaIdentityEntry) Compare(other KopiaIdentityEntry) int {
+	if r := e.Identity.Compare(other.Identity); r != 0 {
+		return r
+	}
+	return e.Config.Compare(other.Config)
+}
 
 func (c KopiaIdentityConfig) Compare(other KopiaIdentityConfig) int {
 	switch {
@@ -22,8 +35,20 @@ func (c KopiaIdentityConfig) Compare(other KopiaIdentityConfig) int {
 	}
 }
 
-func loadKopiaIdentities(kopiaRepoConfigPath string) kopiaIdentities {
-	var identities = make(kopiaIdentities)
+func (i KopiaIdentities) MakeEntries() KopiaIdentityEntries {
+	var entries = make(KopiaIdentityEntries, 0, len(i))
+	for identity, config := range i {
+		entries = append(entries, KopiaIdentityEntry{
+			Identity: identity,
+			Config:   config,
+		})
+	}
+
+	return entries
+}
+
+func LoadKopiaIdentities(kopiaRepoConfigPath string) KopiaIdentities {
+	var identities = make(KopiaIdentities)
 
 	out, err := kopia.Run(kopiaRepoConfigPath, "server", "users", "list")
 	if err != nil {

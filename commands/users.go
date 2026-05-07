@@ -38,6 +38,7 @@ func makeUserActionContext(args []string) actions.UserActionContext {
 	var context = actions.UserActionContext{
 		Identities: identity.BuildIdentities(
 			identity.BuildIdentitiesContext{
+				Sources:               identity.SourceKopia | identity.SourceProvisioner,
 				KopiaRepoConfigPath:   configFile,
 				ProvisionerConfigPath: args[0],
 			}),

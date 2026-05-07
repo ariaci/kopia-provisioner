@@ -7,7 +7,7 @@ import (
 )
 
 var usersUpdateCmd = &cobra.Command{
-	Use:   "update <config.yaml>",
+	Use:   "update <user-definitions-file>",
 	Short: "Updates Kopia identities based on the YAML configuration",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {

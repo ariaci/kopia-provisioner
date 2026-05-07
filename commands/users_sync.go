@@ -7,7 +7,7 @@ import (
 )
 
 var usersSyncCmd = &cobra.Command{
-	Use:   "sync <config.yaml>",
+	Use:   "sync <user-definitions-file>",
 	Short: "Synchronizes and optionally updates Kopia identities based on the YAML configuration",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
