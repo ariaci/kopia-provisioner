@@ -16,10 +16,7 @@ func (context ConfigInitActionContext) buildUserConfig(ids identity.IdentityEntr
 	switch context.Scope.Password {
 	case PasswordScopeUser:
 		u.Default.Password.Type = "nil"
-	case PasswordScopeIdentity:
-		// identity scope → handled below per-host
 	default:
-		// default = identity
 		c.Password.Type = "nil"
 	}
 
