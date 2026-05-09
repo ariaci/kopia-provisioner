@@ -133,7 +133,11 @@ func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
 	identities := make(Identities)
 
 	if context.Sources&SourceKopia != 0 {
-		identities.addKopiaIdentities(LoadKopiaIdentities(context.KopiaRepoConfigPath))
+		ids, err := LoadKopiaIdentities(context.KopiaRepoConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load kopia identities: %w", err)
+		}
+		identities.addKopiaIdentities(ids)
 	}
 	if context.Sources&SourceProvisioner != 0 {
 		ids, err := loadProvisionerIdentities(context.ProvisionerConfigPath)

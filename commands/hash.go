@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"kopia-provisioner/kopia"
-	"log"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -21,7 +20,7 @@ var hashCmd = &cobra.Command{
 
 		out, err := kopia.Run(configFile, "server", "users", "hash-password", "--user-password", args[0])
 		if err != nil {
-			log.Fatalf("kopia users hash-password failed: %v", err)
+			return fmt.Errorf("kopia users hash-password failed: %w", err)
 		}
 
 		fmt.Println(out[0])
