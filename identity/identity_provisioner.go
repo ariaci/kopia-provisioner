@@ -51,7 +51,12 @@ func loadProvisionerIdentities(configPath string) (provisionerIdentities, error)
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	return cfg.makeIdentities(newProviderPipelineContext(configPath))
+	ctx, err := newProviderPipelineContext(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider pipeline context: %w", err)
+	}
+
+	return cfg.makeIdentities(ctx)
 }
 
 func (c Config) makeIdentities(context ProviderPipelineContext) (provisionerIdentities, error) {
