@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"kopia-provisioner/actions"
 	"kopia-provisioner/identity"
 	"strings"
@@ -22,27 +23,28 @@ func init() {
 }
 
 func makeConfigInitActionContext() (actions.ConfigInitActionContext, error) {
-	var context = actions.ConfigInitActionContext{
-		ConfigActionContext: actions.ConfigActionContext{
-			Identities: identity.BuildIdentities(
-				identity.BuildIdentitiesContext{
-					Sources:             identity.SourceKopia,
-					KopiaRepoConfigPath: configFile,
-				}),
-		},
-		Scope: actions.ScopeConfig{
-			Password: actions.PasswordScopeIdentity,
-		},
+	ids, err := identity.BuildIdentities(
+		identity.BuildIdentitiesContext{
+			Sources:             identity.SourceKopia,
+			KopiaRepoConfigPath: configFile,
+		})
+	if err != nil {
+		return actions.ConfigInitActionContext{}, fmt.Errorf("failed to build identities: %w", err)
+	}
+
+	ctx := actions.ConfigInitActionContext{
+		ConfigActionContext: actions.ConfigActionContext{Identities: ids},
+		Scope:               actions.ScopeConfig{Password: actions.PasswordScopeIdentity},
 	}
 
 	if cfgFile := strings.TrimSpace(configFile); len(cfgFile) > 0 {
-		context.ConfigFile = cfgFile
+		ctx.ConfigFile = cfgFile
 	}
 
 	for _, entry := range scopeEntries {
-		if err := context.Scope.Apply(entry); err != nil {
-			return context, err
+		if err := ctx.Scope.Apply(entry); err != nil {
+			return ctx, err
 		}
 	}
-	return context, nil
+	return ctx, nil
 }

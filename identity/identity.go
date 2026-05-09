@@ -1,6 +1,9 @@
 package identity
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type IdentitySource uint8
 
@@ -126,15 +129,19 @@ type BuildIdentitiesContext struct {
 	ProvisionerConfigPath string
 }
 
-func BuildIdentities(context BuildIdentitiesContext) Identities {
+func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
 	identities := make(Identities)
 
 	if context.Sources&SourceKopia != 0 {
 		identities.addKopiaIdentities(LoadKopiaIdentities(context.KopiaRepoConfigPath))
 	}
 	if context.Sources&SourceProvisioner != 0 {
-		identities.addProvisionerIdentities(loadProvisionerIdentities(context.ProvisionerConfigPath))
+		ids, err := loadProvisionerIdentities(context.ProvisionerConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load provisioner identities: %w", err)
+		}
+		identities.addProvisionerIdentities(ids)
 	}
 
-	return identities
+	return identities, nil
 }

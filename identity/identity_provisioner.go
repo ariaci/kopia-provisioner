@@ -40,42 +40,42 @@ func findLineForKey(r *yaml.Node, key string) int {
 	return 0
 }
 
-func loadProvisionerIdentities(configPath string) provisionerIdentities {
+func loadProvisionerIdentities(configPath string) (provisionerIdentities, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
 	return cfg.makeIdentities(newProviderPipelineContext(configPath))
 }
 
-func (c Config) makeIdentities(context ProviderPipelineContext) provisionerIdentities {
+func (c Config) makeIdentities(context ProviderPipelineContext) (provisionerIdentities, error) {
 	identities := make(provisionerIdentities)
 
 	for user, userConfig := range c.Users {
 		// instantiate root password of default password pipeline for the user
 		err := userConfig.Default.Password.resolve(context, NilPassword{})
 		if err != nil {
-			panic(err)
+			return nil, fmt.Errorf("failed to resolve default password for user %s: %w", user, err)
 		}
 
 		for host, hostConfig := range userConfig.Hosts {
 			// instantiate root password of password pipeline for the identity
 			err := hostConfig.Password.resolve(context, userConfig.Default.Password)
 			if err != nil {
-				panic(err)
+				return nil, fmt.Errorf("failed to instantiate root password for user %s on host %s: %w", user, host, err)
 			}
 
 			identities[newIdentityFromUserAndHost(user, host)] = hostConfig
 		}
 	}
 
-	return identities
+	return identities, nil
 }
 
 func (c *ProvisionerIdentityConfig) UnmarshalYAML(node *yaml.Node) error {
