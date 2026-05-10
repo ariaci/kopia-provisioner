@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
-	"kopia-provisioner/actions"
-	"kopia-provisioner/identity"
 	"strings"
+
+	"github.com/ariaci/kopia-provisioner/actions"
+	"github.com/ariaci/kopia-provisioner/identity"
 
 	"github.com/spf13/cobra"
 )

@@ -1,4 +1,4 @@
-module kopia-provisioner
+module github.com/ariaci/kopia-provisioner
 
 go 1.26.1
 

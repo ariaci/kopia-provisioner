@@ -2,10 +2,11 @@ package actions
 
 import (
 	"fmt"
-	"kopia-provisioner/identity"
-	"kopia-provisioner/kopia"
 	"log"
 	"slices"
+
+	"github.com/ariaci/kopia-provisioner/identity"
+	"github.com/ariaci/kopia-provisioner/kopia"
 )
 
 type UserActionFlags uint8

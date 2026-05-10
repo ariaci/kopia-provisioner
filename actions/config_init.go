@@ -2,7 +2,8 @@ package actions
 
 import (
 	"fmt"
-	"kopia-provisioner/identity"
+
+	"github.com/ariaci/kopia-provisioner/identity"
 
 	"gopkg.in/yaml.v3"
 )

@@ -2,8 +2,9 @@ package identity
 
 import (
 	"fmt"
-	"kopia-provisioner/kopia"
 	"strings"
+
+	"github.com/ariaci/kopia-provisioner/kopia"
 )
 
 type KopiaIdentityConfig struct {

@@ -1,8 +1,8 @@
 package actions
 
 import (
-	"kopia-provisioner/identity"
-	"kopia-provisioner/kopia"
+	"github.com/ariaci/kopia-provisioner/identity"
+	"github.com/ariaci/kopia-provisioner/kopia"
 )
 
 func (context UserActionContext) updateIdentity(identity identity.Identity, info identity.IdentityInfo) error {

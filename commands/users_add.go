@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"kopia-provisioner/actions"
+	"github.com/ariaci/kopia-provisioner/actions"
 
 	"github.com/spf13/cobra"
 )
