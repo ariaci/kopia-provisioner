@@ -2,7 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"kopia-provisioner/version"
+
+	"github.com/ariaci/kopia-provisioner/version"
 
 	"github.com/spf13/cobra"
 )

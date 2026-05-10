@@ -1,6 +1,6 @@
 package main
 
-import cmd "kopia-provisioner/commands"
+import cmd "github.com/ariaci/kopia-provisioner/commands"
 
 func main() {
 	cmd.Execute()

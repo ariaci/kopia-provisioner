@@ -3,10 +3,11 @@ package actions
 import (
 	"fmt"
 	"iter"
-	"kopia-provisioner/identity"
-	"kopia-provisioner/utils"
 	"slices"
 	"strings"
+
+	"github.com/ariaci/kopia-provisioner/identity"
+	"github.com/ariaci/kopia-provisioner/utils"
 )
 
 type ScopeEntry struct {

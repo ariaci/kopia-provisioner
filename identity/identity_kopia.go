@@ -1,9 +1,10 @@
 package identity
 
 import (
-	"kopia-provisioner/kopia"
 	"log"
 	"strings"
+
+	"github.com/ariaci/kopia-provisioner/kopia"
 )
 
 type KopiaIdentityConfig struct {
