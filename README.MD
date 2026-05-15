@@ -27,6 +27,17 @@ The design emphasizes modularity, predictable behavior, and clean separation of 
 go install github.com/ariaci/kopia-provisioner@latest
 ```
 
+#### ⚠️ Note
+
+Installing via go install works correctly, but the resulting binary will **not** contain:
+
+* Windows Version Metadata (file properties such as Product Version, File Version, etc.)
+* the embedded Git Commit Hash
+
+This is expected behavior, because ```go install``` builds from the module cache without access to Git metadata.
+
+For a fully featured binary with all resources included, download the pre‑compiled executables from the **Releases** page or build the project manually.
+
 ### Build manually
 
 #### Using Linux
