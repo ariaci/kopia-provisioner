@@ -39,7 +39,7 @@ type FilePasswordProvider struct {
 	FilePath string
 }
 
-func newProviderPipelineContext(filePath string) ProviderPipelineContext {
+func newProviderPipelineContext(filePath string) (ProviderPipelineContext, error) {
 	var err error
 	switch {
 	case filePath == "":
@@ -58,12 +58,12 @@ func newProviderPipelineContext(filePath string) ProviderPipelineContext {
 	}
 
 	if err != nil {
-		panic(err)
+		return ProviderPipelineContext{}, err
 	}
 
 	return ProviderPipelineContext{
 		BaseDir: filePath,
-	}
+	}, nil
 }
 
 func (p *ProviderStage) EnsureNextStage(resolveFn func() (string, error)) (Password, error) {

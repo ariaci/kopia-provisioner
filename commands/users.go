@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ariaci/kopia-provisioner/actions"
@@ -34,29 +35,32 @@ func init() {
 	rootCmd.AddCommand(usersCmd)
 }
 
-func makeUserActionContext(args []string) actions.UserActionContext {
-	var context = actions.UserActionContext{
-		Identities: identity.BuildIdentities(
-			identity.BuildIdentitiesContext{
-				Sources:               identity.SourceKopia | identity.SourceProvisioner,
-				KopiaRepoConfigPath:   configFile,
-				ProvisionerConfigPath: args[0],
-			}),
+func makeUserActionContext(args []string) (actions.UserActionContext, error) {
+	ids, err := identity.BuildIdentities(
+		identity.BuildIdentitiesContext{
+			Sources:               identity.SourceKopia | identity.SourceProvisioner,
+			KopiaRepoConfigPath:   configFile,
+			ProvisionerConfigPath: args[0],
+		})
+	if err != nil {
+		return actions.UserActionContext{}, fmt.Errorf("failed to build identities: %w", err)
 	}
 
+	ctx := actions.UserActionContext{Identities: ids}
+
 	if cfgFile := strings.TrimSpace(configFile); len(cfgFile) > 0 {
-		context.ConfigFile = cfgFile
+		ctx.ConfigFile = cfgFile
 	}
 
 	if optDryRun {
-		context.Flags |= actions.UserActionFlagDryRun
+		ctx.Flags |= actions.UserActionFlagDryRun
 	}
 	if optUpdate {
-		context.Flags |= actions.UserActionFlagUpdate
+		ctx.Flags |= actions.UserActionFlagUpdate
 	}
 	if optVerbose {
-		context.Flags |= actions.UserActionFlagVerbose
+		ctx.Flags |= actions.UserActionFlagVerbose
 	}
 
-	return context
+	return ctx, nil
 }

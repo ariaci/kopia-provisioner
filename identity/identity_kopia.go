@@ -1,7 +1,7 @@
 package identity
 
 import (
-	"log"
+	"fmt"
 	"strings"
 
 	"github.com/ariaci/kopia-provisioner/kopia"
@@ -48,12 +48,12 @@ func (i KopiaIdentities) MakeEntries() KopiaIdentityEntries {
 	return entries
 }
 
-func LoadKopiaIdentities(kopiaRepoConfigPath string) KopiaIdentities {
+func LoadKopiaIdentities(kopiaRepoConfigPath string) (KopiaIdentities, error) {
 	var identities = make(KopiaIdentities)
 
 	out, err := kopia.Run(kopiaRepoConfigPath, "server", "users", "list")
 	if err != nil {
-		log.Fatalf("kopia users list failed: %v\n%s", err, out)
+		return nil, fmt.Errorf("kopia users list failed: %w\n%s", err, out)
 	}
 
 	for i, line := range out {
@@ -65,5 +65,5 @@ func LoadKopiaIdentities(kopiaRepoConfigPath string) KopiaIdentities {
 		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: i + 1}
 	}
 
-	return identities
+	return identities, nil
 }

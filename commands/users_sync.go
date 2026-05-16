@@ -11,7 +11,11 @@ var usersSyncCmd = &cobra.Command{
 	Short: "Synchronizes and optionally updates Kopia identities based on the YAML configuration",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return makeUserActionContext(args).Execute(actions.UserActionSync)
+		ctx, err := makeUserActionContext(args)
+		if err != nil {
+			return err
+		}
+		return ctx.Execute(actions.UserActionSync)
 	},
 }
 

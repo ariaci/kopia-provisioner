@@ -3,6 +3,7 @@ package version
 import (
 	_ "embed"
 	"fmt"
+	"log"
 	"regexp"
 	"runtime/debug"
 	"strconv"
@@ -124,7 +125,7 @@ func ParseSemVerCore(s string) (SemVer, error) {
 func MustParseSemVerCore(s string) SemVer {
 	v, err := ParseSemVerCore(s)
 	if err != nil {
-		panic(fmt.Sprintf("invalid version: %v", err))
+		log.Fatalf("invalid version: %v", err)
 	}
 
 	return v

@@ -20,12 +20,12 @@ var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initializes provisioner YAML configuration based on Kopia identities",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		context, err := makeConfigInitActionContext()
+		ctx, err := makeConfigInitActionContext()
 		if err != nil {
 			return err
 		}
 
-		return context.Execute()
+		return ctx.Execute()
 	},
 }
 
