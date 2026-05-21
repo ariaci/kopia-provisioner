@@ -74,17 +74,29 @@ func (c Config) makeIdentities(context ProviderPipelineContext) (provisionerIden
 		// instantiate root password of default password pipeline for the user
 		err := userConfig.Default.Password.resolve(context, NilPassword{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to resolve default password for user %s: %w", user, err)
+			return nil, fmt.Errorf("failed to resolve default password for user %q defined at line %d: %w", user, userConfig.Default.Line, err)
 		}
 
 		for host, hostConfig := range userConfig.Hosts {
+			id := newIdentityFromUserAndHost(user, host)
+
+			// check for duplicate identities in the provisioner configuration
+			if prevConfig, exists := identities[id]; exists {
+				return nil, fmt.Errorf(
+					"duplicate identity %q found (first defined at line %d, duplicate at line %d)",
+					id,
+					prevConfig.Line,
+					hostConfig.Line,
+				)
+			}
+
 			// instantiate root password of password pipeline for the identity
 			err := hostConfig.Password.resolve(context, userConfig.Default.Password)
 			if err != nil {
-				return nil, fmt.Errorf("failed to instantiate root password for user %s on host %s: %w", user, host, err)
+				return nil, fmt.Errorf("failed to instantiate root password for identity %q defined at line %d: %w", id, hostConfig.Line, err)
 			}
 
-			identities[newIdentityFromUserAndHost(user, host)] = hostConfig
+			identities[id] = hostConfig
 		}
 	}
 
