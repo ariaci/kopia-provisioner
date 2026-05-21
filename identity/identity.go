@@ -124,9 +124,10 @@ func (e IdentityEntry) Compare(other IdentityEntry) int {
 }
 
 type BuildIdentitiesContext struct {
-	Sources               IdentitySource
-	KopiaRepoConfigPath   string
-	ProvisionerConfigPath string
+	Sources                     IdentitySource
+	KopiaRepoConfigPath         string
+	ProvisionerConfigPath       string
+	AllowEmptyProvisionerConfig bool
 }
 
 func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
@@ -140,7 +141,7 @@ func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
 		identities.addKopiaIdentities(ids)
 	}
 	if context.Sources&SourceProvisioner != 0 {
-		ids, err := loadProvisionerIdentities(context.ProvisionerConfigPath)
+		ids, err := loadProvisionerIdentities(context.ProvisionerConfigPath, context.AllowEmptyProvisionerConfig)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load provisioner identities: %w", err)
 		}

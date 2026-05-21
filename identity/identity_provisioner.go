@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -40,15 +41,22 @@ func findLineForKey(r *yaml.Node, key string) int {
 	return 0
 }
 
-func loadProvisionerIdentities(configPath string) (provisionerIdentities, error) {
+func loadProvisionerIdentities(configPath string, allowEmpty bool) (provisionerIdentities, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := decoder.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if !allowEmpty && len(cfg.Users) == 0 {
+		return nil, fmt.Errorf("refusing to continue: users list is empty (possible YAML error)")
 	}
 
 	ctx, err := newProviderPipelineContext(configPath)
