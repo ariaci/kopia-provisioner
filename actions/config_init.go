@@ -5,7 +5,7 @@ import (
 
 	"github.com/ariaci/kopia-provisioner/identity"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
 func (context ConfigInitActionContext) buildUserConfig(ids identity.IdentityEntries) (identity.UserConfig, error) {

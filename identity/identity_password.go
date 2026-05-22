@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
 
 type Password interface {
@@ -48,13 +49,14 @@ func (p KopiaPasswordHash) KopiaArguments() ([]string, error) {
 	return []string{"--user-password-hash", p.Hash}, nil
 }
 
-func (w *PasswordWrapper) UnmarshalYAML(node *yaml.Node) error {
+func (w *PasswordWrapper) UnmarshalYAML(node ast.Node) error {
 	// password is always a string like "plain:foo" or "kopia-hash:bar"
-	if node.Kind != yaml.ScalarNode {
+	if node.Type() != ast.StringType {
 		return fmt.Errorf("password must be a scalar string")
 	}
 
-	raw := node.Value
+	raw := ""
+	yaml.NodeToValue(node, &raw)
 
 	parts := strings.SplitN(raw, ":", 2)
 	if len(parts) != 2 {
