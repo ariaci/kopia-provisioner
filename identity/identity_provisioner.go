@@ -10,7 +10,8 @@ import (
 )
 
 type Config struct {
-	Users map[string]UserConfig `yaml:"users"`
+	Default ProvisionerIdentityConfig `yaml:"default"`
+	Users   map[string]UserConfig     `yaml:"users"`
 }
 
 type ProvisionerIdentityHost struct {
@@ -75,9 +76,15 @@ func loadProvisionerIdentities(configPath string, allowEmpty bool) (provisionerI
 func (c Config) makeIdentities(context ProviderPipelineContext) (provisionerIdentities, error) {
 	identities := make(provisionerIdentities)
 
+	// instantiate root password of default password pipeline for all users
+	err := c.Default.Password.resolve(context, NilPassword{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve global default password defined at line %d: %w", c.Default.Line, err)
+	}
+
 	for user, userConfig := range c.Users {
 		// instantiate root password of default password pipeline for the user
-		err := userConfig.Default.Password.resolve(context, NilPassword{})
+		err := userConfig.Default.Password.resolve(context, c.Default.Password)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve default password for user %q defined at line %d: %w", user, userConfig.Default.Line, err)
 		}
