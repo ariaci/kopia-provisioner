@@ -15,6 +15,8 @@ func (context ConfigInitActionContext) buildUserConfig(ids identity.IdentityEntr
 	c := identity.ProvisionerIdentityConfig{}
 
 	switch context.Scope.Password {
+	case PasswordScopeGlobal:
+		// no-op, global password is set at the config level
 	case PasswordScopeUser:
 		u.Default.Password.Type = "nil"
 	default:
@@ -30,6 +32,11 @@ func (context ConfigInitActionContext) buildUserConfig(ids identity.IdentityEntr
 
 func (context ConfigInitActionContext) buildConfig() (identity.Config, error) {
 	c := identity.Config{Users: make(map[string]identity.UserConfig)}
+
+	if context.Scope.Password == PasswordScopeGlobal {
+		c.Default.Password.Type = "nil"
+	}
+
 	for ids := range context.iterateIdentities() {
 		u, err := context.buildUserConfig(ids)
 		if err != nil {

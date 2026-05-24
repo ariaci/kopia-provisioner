@@ -20,6 +20,14 @@
             "args": ["version"]
         },
         {
+            "name": "config init",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "main.go",
+            "args": ["config", "init", "-c", "kopia-provisioner.config", "-s", "password:user"]
+        },
+        {
             "name": "users synchronize",
             "type": "go",
             "request": "launch",

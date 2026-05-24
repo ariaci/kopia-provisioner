@@ -18,6 +18,7 @@ type ScopeEntry struct {
 type PasswordScopeValue string
 
 const (
+	PasswordScopeGlobal   PasswordScopeValue = "global"
 	PasswordScopeUser     PasswordScopeValue = "user"
 	PasswordScopeIdentity PasswordScopeValue = "identity"
 )
@@ -76,7 +77,7 @@ func (c *ScopeConfig) Apply(entry ScopeEntry) error {
 
 func (v PasswordScopeValue) IsValid() bool {
 	switch v {
-	case PasswordScopeUser, PasswordScopeIdentity:
+	case PasswordScopeGlobal, PasswordScopeUser, PasswordScopeIdentity:
 		return true
 	}
 	return false

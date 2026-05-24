@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Default ProvisionerIdentityConfig `yaml:"default"`
+	Default ProvisionerIdentityConfig `yaml:"default,omitempty"`
 	Users   map[string]UserConfig     `yaml:"users"`
 }
 
@@ -21,7 +21,7 @@ type ProvisionerIdentityHost struct {
 type ProvisionerIdentityHosts map[string]ProvisionerIdentityConfig
 
 type UserConfig struct {
-	Default ProvisionerIdentityConfig `yaml:"default"`
+	Default ProvisionerIdentityConfig `yaml:"default,omitempty"`
 	Hosts   ProvisionerIdentityHosts  `yaml:"hosts"`
 }
 
