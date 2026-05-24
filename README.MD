@@ -60,10 +60,12 @@ go build -o .build/kopia-provisioner.exe
 
 ## 🧩 Configuration
 
-The provisioner is driven by a YAML file describing users and optional host-specific overrides.
+The provisioner is driven by a YAML file describing global and optional user- and host-specific overrides.
 
 Example:
 ```yaml
+default:
+  password: "plain:<plain default password for *@*"
 users:
   bob:
     default:
@@ -73,8 +75,6 @@ users:
         password: "plain:<plain password for bob@home>"
       work:
   jeff:
-    default:
-      password: "plain:<plain default password for jeff@*>"
     hosts:
       - home
   sarah:
@@ -86,23 +86,24 @@ users:
 
 ## Normalization rules
 
-- Defaults apply unless overridden by a host entry.
-- Host overrides replace fields atomically.
+- Defaults apply unless overridden by a specific user default entry or host entry.
+- User default overrides and host overrides replace fields atomically.
 - Passwords are required only for actions that need them (add, update).
 - Delete operations do not require a password.
-- The normalized configuration always reflects the final, effective state for a given host.
+- The normalized configuration always reflects the final, effective state for a given identity.
+- The global default section supports the same fields and password providers as users.<user>.default, and participates in the same override hierarchy.
 
 ## 🚀 Running the provisioner
 
 ### Set up an initial yaml configuration
 
 ```bash
-kopia-provisioner config init [-s|--scope password:{user|identity}] [-c|--config-file <kopia-repository>.config]
+kopia-provisioner config init [-s|--scope password:{global|user|identity}] [-c|--config-file <kopia-repository>.config]
 ```
 
 1) Determine all identities and users from the given repository
 2) Generate an initial YAML configuration containing these entries
-3) Add a ```nil:``` placeholder password for each identity/user based on configured password-scope (defaults to ```identity``` if no password scope is given)
+3) Add a `nil:` placeholder password for each identity/user/global based on configured password-scope (defaults to `identity` if no password scope is given)
 4) Print the resulting configuration to stdout
 
 Example:
