@@ -16,15 +16,17 @@ var usersCmd = &cobra.Command{
 }
 
 var (
-	optUpdate  bool
-	optDryRun  bool
-	optVerbose bool
+	optUpdate     bool
+	optDryRun     bool
+	optVerbose    bool
+	optAllowEmpty bool
 )
 
 func addCommonUserFlags(cmd *cobra.Command) {
 	addCommonRootFlags(cmd)
 	cmd.Flags().BoolVarP(&optDryRun, "dry-run", "d", false, "Simply shows what would happen without making any changes")
 	cmd.Flags().BoolVarP(&optVerbose, "verbose", "v", false, "Enables verbose output")
+	cmd.Flags().BoolVarP(&optAllowEmpty, "allow-empty", "E", false, "Allows empty provisioner configuration (use with caution, may lead to unintended consequences)")
 }
 
 func addUpdateUserFlags(cmd *cobra.Command) {
@@ -38,9 +40,10 @@ func init() {
 func makeUserActionContext(args []string) (actions.UserActionContext, error) {
 	ids, err := identity.BuildIdentities(
 		identity.BuildIdentitiesContext{
-			Sources:               identity.SourceKopia | identity.SourceProvisioner,
-			KopiaRepoConfigPath:   configFile,
-			ProvisionerConfigPath: args[0],
+			Sources:                     identity.SourceKopia | identity.SourceProvisioner,
+			KopiaRepoConfigPath:         configFile,
+			ProvisionerConfigPath:       args[0],
+			AllowEmptyProvisionerConfig: optAllowEmpty,
 		})
 	if err != nil {
 		return actions.UserActionContext{}, fmt.Errorf("failed to build identities: %w", err)
