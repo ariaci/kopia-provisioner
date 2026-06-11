@@ -20,6 +20,7 @@ var (
 	optDryRun     bool
 	optVerbose    bool
 	optAllowEmpty bool
+	optForce      bool
 )
 
 func addCommonUserFlags(cmd *cobra.Command) {
@@ -27,6 +28,10 @@ func addCommonUserFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVarP(&optDryRun, "dry-run", "d", false, "Simply shows what would happen without making any changes")
 	cmd.Flags().BoolVarP(&optVerbose, "verbose", "v", false, "Enables verbose output")
 	cmd.Flags().BoolVarP(&optAllowEmpty, "allow-empty", "E", false, "Allows empty provisioner configuration (use with caution, may lead to unintended consequences)")
+}
+
+func addForceFlag(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&optForce, "force", "f", false, "Force deletion of identities even if snapshots exist (use with caution)")
 }
 
 func addUpdateUserFlags(cmd *cobra.Command) {
@@ -63,6 +68,9 @@ func makeUserActionContext(args []string) (actions.UserActionContext, error) {
 	}
 	if optVerbose {
 		ctx.Flags |= actions.UserActionFlagVerbose
+	}
+	if optForce {
+		ctx.Flags |= actions.UserActionFlagForce
 	}
 
 	return ctx, nil

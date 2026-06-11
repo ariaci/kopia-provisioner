@@ -23,4 +23,5 @@ func init() {
 	usersCmd.AddCommand(usersSyncCmd)
 	addCommonUserFlags(usersSyncCmd)
 	addUpdateUserFlags(usersSyncCmd)
+	addForceFlag(usersSyncCmd)
 }

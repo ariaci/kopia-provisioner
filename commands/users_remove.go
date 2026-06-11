@@ -23,4 +23,5 @@ func init() {
 	usersCmd.AddCommand(usersRemoveCmd)
 	addCommonUserFlags(usersRemoveCmd)
 	addUpdateUserFlags(usersRemoveCmd)
+	addForceFlag(usersRemoveCmd)
 }

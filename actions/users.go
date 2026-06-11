@@ -16,6 +16,7 @@ const (
 	UserActionFlagDryRun UserActionFlags = 1 << iota
 	UserActionFlagUpdate
 	UserActionFlagVerbose
+	UserActionFlagForce
 )
 
 type UserActionContext struct {
@@ -79,6 +80,10 @@ func (context UserActionContext) classify(action UserAction, info identity.Ident
 func (context UserActionContext) kopiaArguments(action kopia.KopiaAction, identity identity.Identity, info identity.IdentityInfo) ([]string, error) {
 	args := []string{"server", "users", action.String(), identity.String()}
 	if action == kopia.KopiaActionRemove {
+		if context.Flags&UserActionFlagForce != 0 {
+			return args, nil
+		}
+
 		return args, nil
 	}
 
