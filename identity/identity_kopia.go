@@ -51,18 +51,17 @@ func (i KopiaIdentities) MakeEntries() KopiaIdentityEntries {
 func LoadKopiaIdentities(kopiaRepoConfigPath string) (KopiaIdentities, error) {
 	var identities = make(KopiaIdentities)
 
-	out, err := kopia.Run(kopiaRepoConfigPath, "server", "users", "list")
-	if err != nil {
-		return nil, fmt.Errorf("kopia users list failed: %w\n%s", err, out)
-	}
-
-	for i, line := range out {
+	err := kopia.Run(func(line string) {
 		line = strings.TrimSpace(line)
 		if line == "" {
-			continue
+			return
 		}
 
-		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: i + 1}
+		identities[newIdentityFromIdentity(line)] = KopiaIdentityConfig{Line: len(identities) + 1}
+	}, kopiaRepoConfigPath, "server", "users", "list")
+
+	if err != nil {
+		return nil, fmt.Errorf("kopia users list failed: %w", err)
 	}
 
 	return identities, nil

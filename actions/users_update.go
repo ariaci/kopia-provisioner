@@ -11,6 +11,5 @@ func (context UserActionContext) updateIdentity(identity identity.Identity, info
 		return err
 	}
 
-	_, err = kopia.Run(context.ConfigFile, args...)
-	return err
+	return kopia.Run(kopia.Discard, context.ConfigFile, args...)
 }
