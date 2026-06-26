@@ -10,6 +10,7 @@ type IdentitySource uint8
 const SourceNone IdentitySource = 0
 const (
 	SourceKopia IdentitySource = 1 << iota
+	SourceKopiaSnapshots
 	SourceProvisioner
 )
 
@@ -52,6 +53,14 @@ func (e Identity) Compare(other Identity) int {
 		return r
 	}
 	return strings.Compare(e.Host, other.Host)
+}
+
+func (s IdentitySource) Validate() error {
+	if s&SourceKopiaSnapshots != 0 && s&SourceKopia == 0 {
+		return fmt.Errorf("SourceKopiaSnapshots requires SourceKopia")
+	}
+
+	return nil
 }
 
 func (id Identity) String() string {
@@ -131,6 +140,10 @@ type BuildIdentitiesContext struct {
 }
 
 func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
+	if err := context.Sources.Validate(); err != nil {
+		return nil, err
+	}
+
 	identities := make(Identities)
 
 	if context.Sources&SourceKopia != 0 {
@@ -138,6 +151,14 @@ func BuildIdentities(context BuildIdentitiesContext) (Identities, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load kopia identities: %w", err)
 		}
+
+		if context.Sources&SourceKopiaSnapshots != 0 {
+			err = ids.AssignSnapshots(context.KopiaRepoConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to assign snapshots: %w", err)
+			}
+		}
+
 		identities.addKopiaIdentities(ids)
 	}
 	if context.Sources&SourceProvisioner != 0 {

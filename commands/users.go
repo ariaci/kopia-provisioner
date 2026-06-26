@@ -45,7 +45,7 @@ func init() {
 func makeUserActionContext(args []string) (actions.UserActionContext, error) {
 	ids, err := identity.BuildIdentities(
 		identity.BuildIdentitiesContext{
-			Sources:                     identity.SourceKopia | identity.SourceProvisioner,
+			Sources:                     identity.SourceKopia | identity.SourceKopiaSnapshots | identity.SourceProvisioner,
 			KopiaRepoConfigPath:         configFile,
 			ProvisionerConfigPath:       args[0],
 			AllowEmptyProvisionerConfig: optAllowEmpty,

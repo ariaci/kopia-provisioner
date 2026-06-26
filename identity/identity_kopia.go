@@ -2,13 +2,17 @@ package identity
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/ariaci/kopia-provisioner/kopia"
 )
 
+var snapshotRe = regexp.MustCompile(`^([a-z0-9\-_.]+@[a-z0-9\-_.]+):(.+)$`)
+
 type KopiaIdentityConfig struct {
-	Line int
+	Line      int
+	Snapshots []string
 }
 type KopiaIdentities map[Identity]KopiaIdentityConfig
 
@@ -46,6 +50,26 @@ func (i KopiaIdentities) MakeEntries() KopiaIdentityEntries {
 	}
 
 	return entries
+}
+
+func (ids KopiaIdentities) AssignSnapshots(kopiaRepoConfigPath string) error {
+	// kopia snapshot list --config-file <config> --all --max-results=1 --no-retention --no-storage-stats --no-mtime
+	return kopia.Run(func(line string) {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			return
+		}
+
+		m := snapshotRe.FindStringSubmatch(line)
+		if len(m) == 3 {
+			id := newIdentityFromIdentity(m[1])
+			p := m[2]
+
+			c := ids[id]
+			c.Snapshots = append(c.Snapshots, p)
+			ids[id] = c
+		}
+	}, kopiaRepoConfigPath, "snapshot", "list", "--all", "--max-results=1", "--no-retention", "--no-storage-stats", "--no-mtime")
 }
 
 func LoadKopiaIdentities(kopiaRepoConfigPath string) (KopiaIdentities, error) {
