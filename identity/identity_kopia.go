@@ -63,7 +63,7 @@ func (ids KopiaIdentities) AssignSnapshots(kopiaRepoConfigPath string) error {
 		m := snapshotRe.FindStringSubmatch(line)
 		if len(m) == 3 {
 			id := newIdentityFromIdentity(m[1])
-			p := m[2]
+			p := strings.TrimSpace(m[2])
 
 			c := ids[id]
 			c.Snapshots = append(c.Snapshots, p)

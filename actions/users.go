@@ -164,13 +164,13 @@ func (c UserActionClassification) String() string {
 	var a string
 	switch base {
 	case UserActionClassificationAdd:
-		a = "A"
+		a = "AI"
 	case UserActionClassificationDelete:
-		a = "D"
+		a = "DI"
 	case UserActionClassificationUpdate:
-		a = "U"
+		a = "UI"
 	default:
-		a = "-"
+		a = "-I"
 	}
 
 	if c&UserActionClassificationSkip != 0 {
