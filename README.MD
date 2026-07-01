@@ -1,6 +1,6 @@
 # kopia-provisioner
 
-A lightweight, idiomatic Go tool for declarative user management on Kopia servers. The *kopia-provisioner* reads a YAML configuration, normalizes it per host, and executes deterministic Add/Update/Delete operations against a Kopia server. Each action is reported using a Git‑style status notation (`-`, `A`, `U`, `D`, `!A`, `!U`, `!D`) for immediate clarity.
+A lightweight, idiomatic Go tool for declarative user management on Kopia servers. The *kopia-provisioner* reads a YAML configuration, normalizes it per host, and executes deterministic Add/Update/Delete operations against a Kopia server. Each action is reported using a Git‑style status notation (`AI`, `UI`, `DI`, `!AI`, `!UI`, `!DI`, `-DI`, ...) for immediate clarity.
 
 The design emphasizes modularity, predictable behavior, and clean separation of concerns.
 
@@ -12,7 +12,8 @@ The design emphasizes modularity, predictable behavior, and clean separation of 
 - Typed password backends (`nil`, `plain`, `kopia-hash`)
 - Deterministic normalization of all identities
 - Clean Kopia CLI integration through a structured argument builder
-- Git-style action reporting (`-`, `A`, `U`, `D`, `!A`, `!U`, `!D`)
+- Delete operations are snapshot-aware - override this behaviour by adding `--force`
+- Git-style action reporting using a compact and forward-compatible 3‑character DSL (`AI`, `UI`, `DI`, `!AI`, `!UI`, `!DI`, `-DI`, ...)
 - Context-aware validation (passwords required only where Kopia needs them)
 - Minimal, robust Go architecture
 - Simulation mode (`--dry-run`, `-d`) to preview all actions without executing Kopia commands
@@ -62,25 +63,44 @@ go build -o .build/kopia-provisioner.exe
 
 The provisioner is driven by a YAML file describing global and optional user- and host-specific overrides.
 
-Example:
+### Abstract
+
 ```yaml
 default:
-  password: "plain:<plain default password for *@*"
+  password: "plain:<plain default password for all identities>"
 users:
   bob:
     default:
-      password: "kopia-hash:<kopia password hash for bob@*>"
+      password: "kopia-hash:<kopia password hash for all hosts of bob>"
     hosts:
       home:
-        password: "plain:<plain password for bob@home>"
+        password: "plain:<plain password for identity bob@home>"
       work:
   jeff:
+    default:
+      password: "kopia-hash:<kopia password hash for all hosts of jeff>"
     hosts:
       - home
-  sarah:
-    default:
-      password: "kopia-hash:<kopia password hash for sarah@*>"
+      - work
+  johnny:
     hosts:
+      - home
+      - work
+```
+
+### Example
+
+```yaml
+users:
+  rudi:
+    hosts:
+      home:
+        password: "plain:rudi_pwd"
+  brigitte:
+    default:
+      password: "plain:brigitte_pwd"
+    hosts:
+      - home
       - work
 ```
 
@@ -114,13 +134,19 @@ kopia-provisioner config init --scope password:user > users.yaml
 ### Synchronize users with Kopia
 
 ```bash
-kopia-provisioner users sync <your-yaml-config> [-u|--update] [-c|--config-file <kopia-repository>.config]
+kopia-provisioner users sync <your-yaml-config> [-f|--force] [-u|--update] [-c|--config-file <kopia-repository>.config]
 ```
 
 The tool will:
 1) Load the YAML configuration
 2) Normalize all identities for the selected host
 3) Execute Add, Delete (or Update) operations
+   - Skip Delete in case of associated snapshots (status: `-DI`)
+   - Use `--force` to force delete of identities with associated snapshots (status: `DI`)
+   - Delete operations follow the status DSL:
+     - `DI` — identity deleted
+     - `-DI` — delete skipped due to associated snapshots
+     - `!DI` — delete failed (Kopia error)
 4) Print a status line for each action
 
 ### Add missing users to Kopia
@@ -138,13 +164,19 @@ The tool will:
 ### Remove users from Kopia
 
 ```bash
-kopia-provisioner users remove <your-yaml-config> [-u|--update] [-c|--config-file <kopia-repository>.config]
+kopia-provisioner users remove <your-yaml-config> [-f|--force] [-u|--update] [-c|--config-file <kopia-repository>.config]
 ```
 
 The tool will:
 1) Load the YAML configuration
 2) Normalize all identities for the selected host
 3) Execute **only Delete** (or Update) operations
+   - Skip Delete in case of associated snapshots (status: `-DI`)
+   - Use `--force` to force delete of identities with associated snapshots (status: `DI`)
+   - Delete operations follow the status DSL:
+     - `DI` — identity deleted
+     - `-DI` — delete skipped due to associated snapshots
+     - `!DI` — delete failed (Kopia error)
 4) Print a status line for each action
 
 ### Update users that exist in both YAML and Kopia
@@ -174,24 +206,44 @@ The tool will:
 
 ## 📊 Status output
 
-The provisioner uses a compact, Git‑inspired status notation:
-| Symbol | Meaning |
-|--------|---------|
-| `-` | Nothing done |
-| `A` | User added |
-| `U` | User updated |
-| `D` | User deleted |
-| `!A` | Add failed |
-| `!U` | Update failed |
-| `!D` | Remove failed |
+The provisioner uses a compact, Git‑inspired status notation.
 
-Example:
+The formal grammar of the status notation DSL is defined below (EBNF):
+```ebnf
+status      = state , operation , object ;
+
+state       = " " | "!" | "-" ;
+operation   = "A" | "U" | "D" | "-" ;
+object      = "I" ;
+```
+
+The grammar is designed to be forward‑compatible with additional object types (e.g. snapshots) and operations (e.g. move).
+
+| State     | Meaning              |
+|-----------|----------------------|
+| `<space>` | Operation succeeded  |
+| `!`       | Operation failed     |
+| `-`       | Operation suppressed |
+
+| Operation | Meaning |
+|-----------|---------|
+| `A`       | Add     |
+| `U`       | Update  |
+| `D`       | Delete  |
+| `-`       | No-op   |
+
+| Object | Meaning  |
+|--------|----------|
+| `I`    | Identity |
+
+### Example
 
 ```bash
- A bob@home
- U bob@work
- D jeff@home
-!D sarah@work
+ AI bob@home      # added bob@home successfully
+ UI bob@work      # updated bob@work successfully
+ DI jeff@home     # deleted jeff@home successfully
+-DI jeff@work     # deleting jeff@work suppressed
+!DI sarah@work    # deleting sarah@work failed
 ```
 
 ## 🔐 Password providers
@@ -305,7 +357,7 @@ The provisioner is structured into clear layers:
 - Password interface — encapsulates password retrieval and argument generation
 - Argument builder — constructs server users <action> <identity> ...
 - Action executor — runs Kopia commands
-- Status renderer — prints `-`/`A`/`U`/`D`/`!A`/`!U`/`!D`
+- Status renderer — prints status of executed operations
 
 This separation keeps the codebase predictable, testable, and easy to extend.
 
