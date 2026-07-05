@@ -217,3 +217,13 @@ jobs:
         with:
           name: act-release-artifacts
           path: artifacts/*
+
+  update-pkg-go-dev:
+    name: Update pkg.go.dev
+    needs: [release]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update pkg.go.dev
+        if: ${{ !env.ACT }}
+        run: curl https://sum.golang.org/lookup/github.com/ariaci/kopia-provisioner@${{ github.ref_name }}
