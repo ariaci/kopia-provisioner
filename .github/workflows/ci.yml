@@ -6,6 +6,7 @@ on:
       - "v*"
 
 env:
+  KOPIA_VERSION: 0.23.1
   GO_VERSION: "1.26.1"
   OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
 
@@ -16,6 +17,7 @@ jobs:
   license:
     name: Source Archives
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -138,10 +140,71 @@ jobs:
             .build/${{ env.TARGET_NAME }}.tar.gz
             .build/${{ env.TARGET_NAME }}.zip
 
+  build-and-push-docker-image:
+    name: Docker Image
+    needs: [license]
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate files
+        run: go generate ./...
+
+      - name: Build binary
+        env:
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build -o .build/docker/usr/local/bin/kopia-provisioner
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: licenses
+          path: .build/
+
+      - name: Add licenses
+        run: |
+          cd .build
+          unzip *-licenses.zip -d ./licenses
+          mkdir -p docker/usr/share/licenses/kopia-provisioner
+          mv ./licenses/*/* ./docker/usr/share/licenses/kopia-provisioner
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        if: ${{ !env.ACT }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image name
+        run: |
+          echo "CONTAINER_REF=ghcr.io/ariaci/kopia-provisioner:${{ github.ref_name }}_kopia.${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+
+      - name: Build docker image
+        run: |
+          docker build --build-arg KOPIA_VERSION=${{ env.KOPIA_VERSION }} -t ${CONTAINER_REF} .
+
+      - name: Push docker image
+        if: ${{ !env.ACT }}
+        run: |
+          docker push ${CONTAINER_REF}
+
   source:
     name: Source Archives
     needs: [license]
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
