@@ -39,6 +39,63 @@ This is expected behavior, because `go install` builds from the module cache wit
 
 For a fully featured binary with all resources included, download the pre‑compiled executables from the **Releases** page or build the project manually.
 
+### 🐳 Using Docker
+
+#### Running kopia-provisioner via Docker
+
+The `kopia-provisioner` can also be executed directly from a Docker container.
+This is useful when you prefer not to install Go locally, want reproducible environments, or integrate the provisioner into CI/CD pipelines.
+
+#### Pull the image
+
+To pull the latest version:
+```bash
+docker pull ghcr.io/ariaci/kopia-provisioner:latest
+```
+
+To pull a specific version:
+```bash
+docker pull ghcr.io/ariaci/kopia-provisioner:v1.2.3_kopia.0.23.1
+```
+
+#### Running the provisioner
+
+Mount your configuration files into the container and execute the desired command:
+```bash
+docker run --rm \
+  -v $(pwd)/users.yaml:/config/users.yaml \
+  -v $(pwd)/repo.config:/config/repo.config \
+  ghcr.io/ariaci/kopia-provisioner:latest \
+  users sync /config/users.yaml --config-file /config/repo.config
+```
+
+#### Example: Add users
+
+```bash
+docker run --rm \
+  -v $(pwd)/users.yaml:/config/users.yaml \
+  -v $(pwd)/repo.config:/config/repo.config \
+  ghcr.io/ariaci/kopia-provisioner:latest \
+  users add /config/users.yaml --config-file /config/repo.config
+```
+
+#### Example: Compute Kopia password hash
+
+```bash
+docker run --rm \
+  -v $(pwd)/repo.config:/config/repo.config \
+  ghcr.io/ariaci/kopia-provisioner:latest \
+  hash "my-password" --config-file /config/repo.config
+```
+
+#### Notes
+
+* the Docker-Image is based on the official Kopia image and adds the `kopia-provisioner` binary
+* the binary is located at `/usr/local/bin/kopia-provisioner` inside the container
+* license files are available under `/usr/share/licenses/kopia-provisioner`
+* you must mount your Kopia repository configuration (`*.config`) into the container
+* additional files (e.g., password files) can be mounted as needed
+
 ### Build manually
 
 #### Using Linux

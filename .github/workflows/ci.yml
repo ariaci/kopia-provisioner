@@ -189,7 +189,9 @@ jobs:
 
       - name: Compute image name
         run: |
-          echo "CONTAINER_REF=ghcr.io/ariaci/kopia-provisioner:${{ github.ref_name }}_kopia.${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+          CONTAINER_TAG=${{ github.ref_name }}_kopia.${{ env.KOPIA_VERSION }}
+          echo "CONTAINER_TAG=${CONTAINER_TAG}" >> $GITHUB_ENV
+          echo "CONTAINER_REF=ghcr.io/${GITHUB_REPOSITORY}:${CONTAINER_TAG}" >> $GITHUB_ENV
 
       - name: Build docker image
         run: |
@@ -199,6 +201,41 @@ jobs:
         if: ${{ !env.ACT }}
         run: |
           docker push ${CONTAINER_REF}
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gh
+
+      - name: Check for latest tag push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            LATEST=$(gh api /users/ariaci/packages/container/kopia-provisioner/versions \
+              --jq '.[].metadata.container.tags[]' \
+              | grep -E '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}_kopia(\.(0|[1-9][0-9]*)){3}$' \
+              | sort -V -r \
+              | head -n1)
+          else
+            LATEST="UNKNOWN"
+          fi
+
+          if [ "$LATEST" = "$CONTAINER_TAG" ]; then
+            echo "IS_LATEST=true" >> $GITHUB_ENV
+          else
+            echo "IS_LATEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Push latest tag
+        if: env.IS_LATEST == 'true'
+        run: |
+          if [[ ! -v ACT ]]; then
+            docker tag ${CONTAINER_REF} ghcr.io/${GITHUB_REPOSITORY}:latest
+            docker push ghcr.io/${GITHUB_REPOSITORY}:latest
+          else
+            echo "Skipping latest tag push due ACT environment. Please run this workflow in GitHub Actions to push the latest tag."
+          fi
 
   source:
     name: Source Archives
