@@ -9,7 +9,8 @@ env:
   KOPIA_VERSION: 0.23.1
   GO_VERSION: "1.26.1"
   OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
-  CONTAINER_BASE_TAG: "kopia-"
+  CONTAINER_REGISTRY: "ghcr.io/${{ github.repository }}"
+  IMAGE_BASE_TAG: "${{ github.ref_name }}-kopia-"
 
 permissions:
   contents: write
@@ -96,10 +97,13 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
 
-      - name: Compute essential environment variables
+      - name: Compute essential build environment variables
         run: |
-          echo "TARGET_NAME=${{ env.OUTPUT_BASE_NAME }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}" >> $GITHUB_ENV
-          echo "CONTAINER_TAG=${{ env.CONTAINER_BASE_TAG }}${{ env.KOPIA_VERSION }}-${{ matrix.goarch }}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${{ env.OUTPUT_BASE_NAME }}-${{ matrix.goos }}-${{ matrix.archname || matrix.goarch }}" >> $GITHUB_ENV
+      - name: Compute essential docker image environment variables
+        run: |
+          echo "IMAGE_TAG=${{ env.IMAGE_BASE_TAG }}${{ env.KOPIA_VERSION }}-${{ matrix.goarch }}" >> $GITHUB_ENV
+          echo "IMAGE_ARTIFACT_NAME=${{ env.ARTIFACT_NAME }}.kopia-${{ env.KOPIA_VERSION }}.dockerimage" >> $GITHUB_ENV
 
       - name: Generate files
         run: go generate ./...
@@ -109,7 +113,7 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${TARGET_NAME}${{ matrix.goext }}
+          go build -o .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${{ env.ARTIFACT_NAME }}${{ matrix.goext }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -127,18 +131,18 @@ jobs:
         if: ${{ matrix.archive == '.zip' }}
         run: |
           cd .build/artifacts
-          zip -r ../${TARGET_NAME}.zip ./
+          zip -r ../${{ env.ARTIFACT_NAME }}.zip ./
       - name: Package artifacts
         if: ${{ matrix.archive != '.zip' }}
         run: |
           cd .build/artifacts
-          tar -czf ../${TARGET_NAME}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
+          tar -czf ../${{ env.ARTIFACT_NAME }}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
 
       - name: Prepare Docker-image contents
         if: ${{ matrix.goos == 'linux' && (matrix.goarch == 'amd64' || matrix.goarch == 'arm64') }}
         run: |
           mkdir -p .build/docker/usr/local/bin
-          mv .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${TARGET_NAME}${{ matrix.goext }} .build/docker/usr/local/bin/kopia-provisioner
+          mv .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${{ env.ARTIFACT_NAME }}${{ matrix.goext }} .build/docker/usr/local/bin/kopia-provisioner
           mkdir -p .build/docker/usr/share/licenses/kopia-provisioner
           mv .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/licenses/* .build/docker/usr/share/licenses/kopia-provisioner
       - name: Create Docker-image
@@ -147,21 +151,49 @@ jobs:
           docker buildx build \
             --platform=linux/${{ matrix.goarch }} \
             --build-arg KOPIA_VERSION=${{ env.KOPIA_VERSION }} \
-            --tag ${{ env.OUTPUT_BASE_NAME }}:${{ env.CONTAINER_TAG }} \
+            --tag ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }} \
             --output=type=docker \
             .
       - name: Save image
         if: ${{ matrix.goos == 'linux' && (matrix.goarch == 'amd64' || matrix.goarch == 'arm64') }}
-        run: docker save ${{ env.OUTPUT_BASE_NAME }}:${{ env.CONTAINER_TAG }} -o .build/${TARGET_NAME}-image.tar
+        run: |
+          docker save ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }} -o .build/${{ env.IMAGE_ARTIFACT_NAME }}.tar
 
-      - name: Upload artifact
+      - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
-            .build/${{ env.TARGET_NAME }}.tar.gz
-            .build/${{ env.TARGET_NAME }}.zip
-            .build/${{ env.TARGET_NAME }}-image.tar
+            .build/${{ env.ARTIFACT_NAME }}.tar.gz
+            .build/${{ env.ARTIFACT_NAME }}.zip
+      - name: Upload docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: dockerimage-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            .build/${{ env.IMAGE_ARTIFACT_NAME }}.tar
+
+  docker-images:
+    name: Docker Images
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download linux/amd64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dockerimage-linux-amd64
+          path: .build/
+      - name: Download linux/arm64 artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dockerimage-linux-arm64
+          path: .build/
+
+      - name: Load docker images
+        run: |
+          docker load -i .build/${{ env.OUTPUT_BASE_NAME }}-linux-x64.kopia-${{ env.KOPIA_VERSION }}.dockerimage.tar
+          docker load -i .build/${{ env.OUTPUT_BASE_NAME }}-linux-arm64.kopia-${{ env.KOPIA_VERSION }}.dockerimage.tar
 
   source:
     name: Source Archives
