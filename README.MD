@@ -46,16 +46,16 @@ For a fully featured binary with all resources included, download the pre‑comp
 The `kopia-provisioner` can also be executed directly from a Docker container.
 This is useful when you prefer not to install Go locally, want reproducible environments, or integrate the provisioner into CI/CD pipelines.
 
-#### Pull the image
+#### Pull the image (Multiarch for Linux: amd64 or arm64)
 
 To pull the latest version:
 ```bash
-docker pull ghcr.io/ariaci/kopia-provisioner:latest
+docker pull ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1
 ```
 
 To pull a specific version:
 ```bash
-docker pull ghcr.io/ariaci/kopia-provisioner:v1.2.3_kopia.0.23.1
+docker pull ghcr.io/ariaci/kopia-provisioner:v0.9.0-kopia-0.23.1
 ```
 
 #### Running the provisioner
@@ -65,7 +65,7 @@ Mount your configuration files into the container and execute the desired comman
 docker run --rm \
   -v $(pwd)/users.yaml:/config/users.yaml \
   -v $(pwd)/repo.config:/config/repo.config \
-  ghcr.io/ariaci/kopia-provisioner:latest \
+  ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 \
   users sync /config/users.yaml --config-file /config/repo.config
 ```
 
@@ -75,7 +75,7 @@ docker run --rm \
 docker run --rm \
   -v $(pwd)/users.yaml:/config/users.yaml \
   -v $(pwd)/repo.config:/config/repo.config \
-  ghcr.io/ariaci/kopia-provisioner:latest \
+  ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 \
   users add /config/users.yaml --config-file /config/repo.config
 ```
 
@@ -84,7 +84,7 @@ docker run --rm \
 ```bash
 docker run --rm \
   -v $(pwd)/repo.config:/config/repo.config \
-  ghcr.io/ariaci/kopia-provisioner:latest \
+  ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 \
   hash "my-password" --config-file /config/repo.config
 ```
 
