@@ -11,6 +11,7 @@ env:
   OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
   CONTAINER_REGISTRY: "ghcr.io/${{ github.repository }}"
   IMAGE_BASE_TAG: "${{ github.ref_name }}-kopia-"
+  IMAGE_LATEST_BASE_TAG: "latest-kopia-"
 
 permissions:
   contents: write
@@ -194,6 +195,69 @@ jobs:
         run: |
           docker load -i .build/${{ env.OUTPUT_BASE_NAME }}-linux-x64.kopia-${{ env.KOPIA_VERSION }}.dockerimage.tar
           docker load -i .build/${{ env.OUTPUT_BASE_NAME }}-linux-arm64.kopia-${{ env.KOPIA_VERSION }}.dockerimage.tar
+
+      - name: Compute environment variables
+        run: |
+          echo "IMAGE_TAG=${{ env.IMAGE_BASE_TAG }}${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+          echo "IMAGE_LATEST_TAG=${{ env.IMAGE_LATEST_BASE_TAG }}${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        if: ${{ !env.ACT }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push docker images
+        if: ${{ !env.ACT }}
+        run: |
+          docker push ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-amd64
+          docker push ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-arm64
+      - name: Build and push multiarch docker image
+        if: ${{ !env.ACT }}
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }} \
+            ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-amd64 \
+            ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-arm64
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gh
+
+      - name: Check for latest tag push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            LATEST=$(gh api /users/${{ github.repository_owner }}/packages/container/kopia-provisioner/versions \
+              --jq '.[].metadata.container.tags[]' \
+              | grep -E '^v(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*)){2}-kopia(\.(0|[1-9][0-9]*)){3}$' \
+              | sort -V -r \
+              | head -n1)
+          else
+            LATEST="UNKNOWN"
+          fi
+
+          if [ "$LATEST" = "$CONTAINER_TAG" ]; then
+            echo "IS_LATEST=true" >> $GITHUB_ENV
+          else
+            echo "IS_LATEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Push latest tag
+        if: env.IS_LATEST == 'true'
+        run: |
+          if [[ ! -v ACT ]]; then
+            docker buildx imagetools create \
+              -t ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_LATEST_TAG }} \
+              ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-amd64 \
+              ${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}-arm64
+          else
+            echo "Skipping latest tag push due ACT environment. Please run this workflow in GitHub Actions to push the latest tag."
+          fi
 
   source:
     name: Source Archives
