@@ -23,10 +23,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -52,7 +52,7 @@ jobs:
           zip -r ${OUTPUT_BASE_NAME}-licenses.zip ${OUTPUT_BASE_NAME}/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: licenses
           path: |
@@ -92,10 +92,10 @@ jobs:
             goarch: arm
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -117,7 +117,7 @@ jobs:
         run: |
           go build -o .build/artifacts/${{ env.OUTPUT_BASE_NAME }}/${{ env.ARTIFACT_NAME }}${{ matrix.goext }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: licenses
           path: .build/
@@ -175,14 +175,14 @@ jobs:
             .
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             .build/${{ env.ARTIFACT_NAME }}.tar.gz
             .build/${{ env.ARTIFACT_NAME }}.zip
       - name: Upload docker image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dockerimage-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
@@ -199,12 +199,12 @@ jobs:
 
     steps:
       - name: Download linux/amd64 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dockerimage-linux-amd64
           path: .build/
       - name: Download linux/arm64 artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dockerimage-linux-arm64
           path: .build/
@@ -288,7 +288,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Prepare sources
         run: |
@@ -297,7 +297,7 @@ jobs:
           cd .build
           tar -xf ${{ env.OUTPUT_BASE_NAME }}-source.tar
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: licenses
           path: .build/
@@ -320,7 +320,7 @@ jobs:
           cd .build
           zip -r ${{ env.OUTPUT_BASE_NAME }}-source.zip ${{ env.OUTPUT_BASE_NAME }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: source
           path: |
@@ -333,7 +333,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
 
@@ -358,7 +358,7 @@ jobs:
 
       - name: Upload artifacts for ACT testing
         if: ${{ env.ACT }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: act-release-artifacts
           path: artifacts/*
