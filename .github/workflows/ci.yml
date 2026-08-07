@@ -53,7 +53,7 @@ jobs:
           zip -r ${OUTPUT_BASE_NAME}-licenses.zip ${OUTPUT_BASE_NAME}/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: ./.github/actions/upload-artifact
         with:
           name: licenses
           path: |
@@ -176,14 +176,15 @@ jobs:
             .
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v5
+        uses: ./.github/actions/upload-artifact
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             .build/${{ env.ARTIFACT_NAME }}.tar.gz
             .build/${{ env.ARTIFACT_NAME }}.zip
       - name: Upload docker image
-        uses: actions/upload-artifact@v5
+        if: ${{ matrix.goos == 'linux' && (matrix.goarch == 'amd64' || matrix.goarch == 'arm64') }}
+        uses: ./.github/actions/upload-artifact
         with:
           name: dockerimage-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
@@ -321,7 +322,7 @@ jobs:
           cd .build
           zip -r ${{ env.OUTPUT_BASE_NAME }}-source.zip ${{ env.OUTPUT_BASE_NAME }}
 
-      - uses: actions/upload-artifact@v5
+      - uses: ./.github/actions/upload-artifact
         with:
           name: source
           path: |

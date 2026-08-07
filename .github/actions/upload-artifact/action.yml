@@ -1,0 +1,25 @@
+name: "Dual Upload Artifact"
+description: "Uses v5 for Act and v7 for GitHub Actions"
+
+inputs:
+  name:
+    required: true
+  path:
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Upload artifact (Act)
+      if: ${{ env.ACT }}
+      uses: actions/upload-artifact@v5
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
+
+    - name: Upload artifact (GitHub)
+      if: ${{ !env.ACT }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.path }}
