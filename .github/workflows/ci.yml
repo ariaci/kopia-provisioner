@@ -141,7 +141,7 @@ jobs:
           cd .build/artifacts
           tar -czf ../${{ env.ARTIFACT_NAME }}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
         with:
           driver: docker-container
 
@@ -353,7 +353,7 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ !env.ACT }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: artifacts/**/*
