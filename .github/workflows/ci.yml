@@ -60,37 +60,38 @@ jobs:
             .build/${{ env.OUTPUT_BASE_NAME }}-licenses.zip
             .build/${{ env.OUTPUT_BASE_NAME }}-licenses.tar.gz
 
+  prepare-build:
+    name: Prepare Build
+    runs-on: ubuntu-latest
+
+    outputs:
+      build_matrix: ${{ steps.matrix.outputs.build_matrix }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load GitHub build matrix
+        if: ${{ !env.ACT }}
+        run: |
+          echo "MATRIX_FILE=.github/matrices/build.json" >> "$GITHUB_ENV"
+
+      - name: Load act build matrix
+        if: ${{ env.ACT }}
+        run: |
+          echo "MATRIX_FILE=.github/matrices/build.act.json" >> "$GITHUB_ENV"
+
+      - id: matrix
+        name: Export build matrix
+        run: |
+          echo "build_matrix=$(jq -c . "$MATRIX_FILE")" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build (${{ matrix.goos }}-${{ matrix.goarch }})
-    needs: [license]
+    needs: [license, prepare-build]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-        goos: [linux, windows, darwin]
-        goarch: [amd64, 386, arm64, arm]
-
-        include:
-          # Friendly names
-          - goarch: amd64
-            archname: x64
-          - goarch: 386
-            archname: x86
-          # Windows extension
-          - goos: windows
-            goext: .exe
-            archive: .zip
-            
-        exclude:
-          # Windows does not support arm 32-bit
-          - goos: windows
-            goarch: arm
-          # Darwin supports only 64-bit
-          - goos: darwin
-            goarch: 386
-          - goos: darwin
-            goarch: arm
+      matrix: ${{ fromJSON(needs.prepare-build.outputs.build_matrix) }}
     
     steps:
       - uses: actions/checkout@v7

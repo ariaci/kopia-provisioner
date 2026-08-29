@@ -1,0 +1,11 @@
+{
+  "os": ["ubuntu-latest"],
+  "goos": ["linux"],
+  "goarch": ["amd64", "arm64"],
+  "include": [
+    {
+      "goarch": "amd64",
+      "archname": "x64"
+    }
+  ]
+}
