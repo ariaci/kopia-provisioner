@@ -28,7 +28,7 @@ github_repository="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set. This scrip
 github_sha="${GITHUB_SHA:?GITHUB_SHA is not set. This script should be run in the context of a GitHub Actions workflow.}"
 github_repository_owner="${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is not set. This script should be run in the context of a GitHub Actions workflow.}"
 
-image_repository="${CONTAINER_REGISTRY:-ghcr.io/$github_repository}"
+image_repository="${CONTAINER_REGISTRY:?CONTAINER_REGISTRY is not set. This script should be run in the context of a GitHub Actions workflow.}"
 image_tag="${IMAGE_BASE_TAG:-$version-kopia-}${kopia_version}-${docker_architecture}"
 image_description="${IMAGE_DESCRIPTION:?IMAGE_DESCRIPTION is not set. This script should be run in the context of a GitHub Actions workflow.}"
 image_created="$(date --utc +%Y-%m-%dT%H:%M:%SZ)"

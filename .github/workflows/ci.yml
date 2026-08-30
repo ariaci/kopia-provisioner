@@ -191,6 +191,38 @@ jobs:
           path: |
             .build/${{ env.ARTIFACT_NAME }}.dockerimage.tar
 
+  build-docker-multiarch:
+    name: Build Docker MultiArch Image (linux/amd64, linux/arm64)
+    needs: [build-docker-singlearch]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Compute essential environment variables
+        run: |
+          echo "ARTIFACT_NAME=${{ env.OUTPUT_BASE_NAME }}-linux.kopia-${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
+      
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dockerimage-linux-*
+          path: .build/
+          merge-multiple: true
+
+      - name: Build Docker image
+        run: |
+          .github/scripts/create-multiarch
+
+      - name: Upload binaries
+        uses: ./.github/actions/upload-artifact
+        with:
+          name: dockerimage-linux
+          path: |
+            .build/${{ env.ARTIFACT_NAME }}.dockerimage.tar
+
   source:
     name: Source Archives
     needs: [license]
@@ -238,7 +270,7 @@ jobs:
 
   release:
     name: Create Release
-    needs: [build, build-docker-singlearch, source, license]
+    needs: [build, build-docker-multiarch, source, license]
     runs-on: ubuntu-latest
 
     steps:
