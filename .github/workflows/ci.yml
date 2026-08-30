@@ -191,6 +191,43 @@ jobs:
           path: |
             .build/${{ env.ARTIFACT_NAME }}.dockerimage.tar
 
+  push-docker-singlearch:
+    name: Push Docker SingleArch Image (${{ matrix.os }}/${{ matrix.arch }})
+    needs: [build-docker-singlearch]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        os: [linux]
+
+        include:
+          - arch: amd64
+            archname: x64
+
+    steps:
+      - name: Compute essential environment variables
+        run: |
+          echo "ARTIFACT_NAME=${{ env.OUTPUT_BASE_NAME }}-${{ matrix.os }}-${{ matrix.archname || matrix.arch }}.kopia-${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ env.IMAGE_BASE_TAG }}${{ env.KOPIA_VERSION }}-${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
+      
+      - uses: actions/download-artifact@v8
+        with:
+          name: dockerimage-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Push Docker image
+        if: ${{ !env.ACT }}
+        run: |
+          regctl image import "${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}" "${{ env.ARTIFACT_NAME }}.dockerimage.tar"
+      - name: Push Docker image
+        if: ${{ env.ACT }}
+        run: |
+          echo "Skipping Docker image push in ACT testing mode." 
+          echo "Image '${{ env.ARTIFACT_NAME }}.dockerimage.tar' would have been pushed to '${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}'."
+
   build-docker-multiarch:
     name: Build Docker MultiArch Image (linux/amd64, linux/arm64)
     needs: [build-docker-singlearch]
