@@ -260,6 +260,34 @@ jobs:
           path: |
             .build/${{ env.ARTIFACT_NAME }}.dockerimage.tar
 
+  push-docker-multiarch:
+    name: Push Docker MultiArch Image (linux/amd64, linux/arm64)
+    needs: [push-docker-singlearch, build-docker-multiarch]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Compute essential environment variables
+        run: |
+          echo "ARTIFACT_NAME=${{ env.OUTPUT_BASE_NAME }}-linux.kopia-${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ env.IMAGE_BASE_TAG }}${{ env.KOPIA_VERSION }}" >> $GITHUB_ENV
+
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
+      
+      - uses: actions/download-artifact@v8
+        with:
+          name: dockerimage-linux
+
+      - name: Push Docker image
+        if: ${{ !env.ACT }}
+        run: |
+          regctl image import "${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}" "${{ env.ARTIFACT_NAME }}.dockerimage.tar"
+      - name: Push Docker image
+        if: ${{ env.ACT }}
+        run: |
+          echo "Skipping Docker image push in ACT testing mode." 
+          echo "Image '${{ env.ARTIFACT_NAME }}.dockerimage.tar' would have been pushed to '${{ env.CONTAINER_REGISTRY }}:${{ env.IMAGE_TAG }}'."
+
   source:
     name: Source Archives
     needs: [license]
