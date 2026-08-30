@@ -12,9 +12,10 @@ base_ext="kopia-${kopia_version}.dockerimage.tar"
 github_repository="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set. This script should be run in the context of a GitHub Actions workflow.}"
 
 image_repository="${CONTAINER_REGISTRY:?CONTAINER_REGISTRY is not set. This script should be run in the context of a GitHub Actions workflow.}"
-image_tag="${IMAGE_BASE_TAG:-$version-kopia-$kopia_version}"
+image_base_tag="${IMAGE_BASE_TAG:-$version-kopia-}"
+image_tag="${IMAGE_TAG:-$image_base_tag$kopia_version}"
 
-output_filename="${ARTIFACT_NAME:-$base_name-linux.kopia-$kopia_version}.dockerimage.tar"
+output_filename="${ARTIFACT_NAME:-$base_name.kopia-$kopia_version}.dockerimage.tar"
 
 rm -rf -- "${regctl_dir}/"
 mkdir -p "${regctl_dir}"
