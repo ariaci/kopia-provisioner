@@ -60,9 +60,3 @@ regctl image export \
     --name "${image_repository}:${image_tag}" \
     "ocidir://${regctl_dir}/linux-multi" \
     ".build/${output_filename}"
-
-#regctl image import ghcr.io/ariaci/kopia-provisioner:v0.9.0-kopia-0.23.1-amd64 .build/kopia-provisioner-v0.9.0-linux-x64.kopia-0.23.1.dockerimage.tar
-#regctl image import ghcr.io/ariaci/kopia-provisioner:v0.9.0-kopia-0.23.1-arm64 .build/kopia-provisioner-v0.9.0-linux-arm64.kopia-0.23.1.dockerimage.tar
-
-#regctl image import ghcr.io/ariaci/kopia-provisioner:v0.9.0-kopia-0.23.1 .build/kopia-provisioner-v0.9.0-linux.kopia-0.23.1.dockerimage.tar
-#regctl image import ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 .build/kopia-provisioner-v0.9.0-linux.kopia-0.23.1.dockerimage.tar
