@@ -1,0 +1,86 @@
+#!/bin/bash
+set -euo pipefail
+
+version="${GITHUB_REF_NAME:?GITHUB_REF_NAME is not set. This script should be run in the context of a GitHub Actions workflow.}"
+architecture="${1:-x64}"
+docker_architecture="${2:-$architecture}"
+kopia_version="${KOPIA_VERSION:?KOPIA_VERSION is not set. This script should be run in the context of a GitHub Actions workflow.}"
+
+if [ "${architecture}" = "amd64" ]; then
+    architecture="x64"
+fi
+
+if [ "${docker_architecture}" = "x64" ]; then
+    docker_architecture="amd64"
+fi
+
+output_base_name="${OUTPUT_BASE_NAME:?OUTPUT_BASE_NAME is not set. This script should be run in the context of a GitHub Actions workflow.}"
+output_arch_name="${output_base_name}-linux-${architecture}"
+output_arch_filename="${ARTIFACT_NAME:-$output_arch_name.kopia-$kopia_version}.dockerimage.tar"
+
+skopeo_dir="./.build/skopeo"
+regctl_dir="./.build/regctl"
+artifacts_dir="./.build/artifacts"
+dockerctx_dir="./.build/docker"
+
+github_server_url="${GITHUB_SERVER_URL:?GITHUB_SERVER_URL is not set. This script should be run in the context of a GitHub Actions workflow.}"
+github_repository="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set. This script should be run in the context of a GitHub Actions workflow.}"
+github_sha="${GITHUB_SHA:?GITHUB_SHA is not set. This script should be run in the context of a GitHub Actions workflow.}"
+github_repository_owner="${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is not set. This script should be run in the context of a GitHub Actions workflow.}"
+
+image_repository="${CONTAINER_REGISTRY:?CONTAINER_REGISTRY is not set. This script should be run in the context of a GitHub Actions workflow.}"
+image_tag="${IMAGE_BASE_TAG:-$version-kopia-}${kopia_version}-${docker_architecture}"
+image_description="${IMAGE_DESCRIPTION:?IMAGE_DESCRIPTION is not set. This script should be run in the context of a GitHub Actions workflow.}"
+image_created="$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
+
+rm -f -- ".build/${output_arch_filename}"
+
+rm -rf -- "${skopeo_dir}/"
+mkdir -p "${skopeo_dir}"
+
+rm -rf -- "${regctl_dir}/linux-${docker_architecture}/"
+mkdir -p "${regctl_dir}"
+
+rm -rf -- "${artifacts_dir}/"
+mkdir -p "${artifacts_dir}"
+
+tar -xf "./.build/${output_arch_name}.tar.gz" -C "${artifacts_dir}"
+chmod -R a+w "${artifacts_dir}"
+
+rm -rf -- "${dockerctx_dir}/usr/"
+mkdir -p "${dockerctx_dir}/usr/local/bin" "${dockerctx_dir}/usr/share/licenses"
+
+mv "${artifacts_dir}/${output_base_name}/${output_arch_name}" "${dockerctx_dir}/usr/local/bin/kopia-provisioner"
+mv "${artifacts_dir}/${output_base_name}/licenses" "${dockerctx_dir}/usr/share/licenses/kopia-provisioner"
+
+docker buildx build \
+    --platform="linux/${docker_architecture}" \
+    --output=type=docker,oci-mediatypes=true \
+    --build-arg "KOPIA_VERSION=${kopia_version}" \
+    --label "org.opencontainers.image.title=kopia-provisioner" \
+    --label "org.opencontainers.image.created=${image_created}" \
+    --label "org.opencontainers.image.description=${image_description}" \
+    --label "org.opencontainers.image.version=${version}" \
+    --label "org.opencontainers.image.revision=${github_sha}" \
+    --label "org.opencontainers.image.source=${github_server_url}/${github_repository}" \
+    --label "org.opencontainers.image.url=${github_server_url}/${github_repository}" \
+    --label "org.opencontainers.image.documentation=${github_server_url}/${github_repository}/blob/${github_sha}/README.MD" \
+    --label "org.opencontainers.image.licenses=MIT" \
+    --label "org.opencontainers.image.vendor=${github_repository_owner}" \
+    --label "org.opencontainers.image.base.name=kopia/kopia:${kopia_version}" \
+    --tag "${image_repository}:${image_tag}" \
+    .
+
+skopeo copy \
+  --format v2s2 \
+  "docker-daemon:${image_repository}:${image_tag}" \
+  "docker-archive:${skopeo_dir}/linux-${docker_architecture}.tar:${image_repository}:${image_tag}"
+
+regctl image import \
+    "ocidir://${regctl_dir}/linux-${docker_architecture}" \
+    "${skopeo_dir}/linux-${docker_architecture}.tar"
+
+regctl image export \
+    --name "${image_repository}:${image_tag}" \
+    "ocidir://${regctl_dir}/linux-${docker_architecture}" \
+    ".build/${output_arch_filename}"

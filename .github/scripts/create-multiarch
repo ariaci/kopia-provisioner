@@ -1,0 +1,62 @@
+#!/bin/bash
+set -euo pipefail
+
+version="${GITHUB_REF_NAME:?GITHUB_REF_NAME is not set. This script should be run in the context of a GitHub Actions workflow.}"
+kopia_version="${KOPIA_VERSION:?KOPIA_VERSION is not set. This script should be run in the context of a GitHub Actions workflow.}"
+
+regctl_dir="./.build/regctl"
+
+base_name="${OUTPUT_BASE_NAME:?OUTPUT_BASE_NAME is not set. This script should be run in the context of a GitHub Actions workflow.}-linux"
+base_ext="kopia-${kopia_version}.dockerimage.tar"
+
+github_repository="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is not set. This script should be run in the context of a GitHub Actions workflow.}"
+
+image_repository="${CONTAINER_REGISTRY:?CONTAINER_REGISTRY is not set. This script should be run in the context of a GitHub Actions workflow.}"
+image_base_tag="${IMAGE_BASE_TAG:-$version-kopia-}"
+image_tag="${IMAGE_TAG:-$image_base_tag$kopia_version}"
+
+output_filename="${ARTIFACT_NAME:-$base_name.kopia-$kopia_version}.dockerimage.tar"
+
+rm -rf -- "${regctl_dir}/"
+mkdir -p "${regctl_dir}"
+
+rm -f -- ".build/${base_name}.${base_ext}"
+
+regctl image import "ocidir://${regctl_dir}/linux-amd64" ".build/${base_name}-x64.${base_ext}"
+regctl image import "ocidir://${regctl_dir}/linux-arm64" ".build/${base_name}-arm64.${base_ext}"
+
+labels="$(regctl image inspect ocidir://${regctl_dir}/linux-amd64 | jq -r '.config.Labels')"
+
+label_created="$(date +%Y-%m-%dT%H:%M:%S%:z)"
+label_title="$(jq -r '."org.opencontainers.image.title"' <<< "$labels")"
+label_description="$(jq -r '."org.opencontainers.image.description"' <<< "$labels")"
+label_version="$(jq -r '."org.opencontainers.image.version"' <<< "$labels")"
+label_revision="$(jq -r '."org.opencontainers.image.revision"' <<< "$labels")"
+label_source="$(jq -r '."org.opencontainers.image.source"' <<< "$labels")"
+label_url="$(jq -r '."org.opencontainers.image.url"' <<< "$labels")"
+label_documentation="$(jq -r '."org.opencontainers.image.documentation"' <<< "$labels")"
+label_licenses="$(jq -r '."org.opencontainers.image.licenses"' <<< "$labels")"
+label_vendor="$(jq -r '."org.opencontainers.image.vendor"' <<< "$labels")"
+label_base_name="$(jq -r '."org.opencontainers.image.base.name"' <<< "$labels")"
+label_os="$(jq -r '."org.opencontainers.image.os"' <<< "$labels")"
+
+regctl index create "ocidir://${regctl_dir}/linux-multi" \
+       --ref "ocidir://${regctl_dir}/linux-amd64" \
+       --ref "ocidir://${regctl_dir}/linux-arm64" \
+       --annotation "org.opencontainers.image.created=$label_created" \
+       --annotation "org.opencontainers.image.title=$label_title" \
+       --annotation "org.opencontainers.image.description=$label_description" \
+       --annotation "org.opencontainers.image.version=$label_version" \
+       --annotation "org.opencontainers.image.revision=$label_revision" \
+       --annotation "org.opencontainers.image.source=$label_source" \
+       --annotation "org.opencontainers.image.url=$label_url" \
+       --annotation "org.opencontainers.image.documentation=$label_documentation" \
+       --annotation "org.opencontainers.image.licenses=$label_licenses" \
+       --annotation "org.opencontainers.image.vendor=$label_vendor" \
+       --annotation "org.opencontainers.image.base.name=$label_base_name" \
+       --annotation "org.opencontainers.image.os=$label_os"
+
+regctl image export \
+    --name "${image_repository}:${image_tag}" \
+    "ocidir://${regctl_dir}/linux-multi" \
+    ".build/${output_filename}"

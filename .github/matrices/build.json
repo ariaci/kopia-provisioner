@@ -1,0 +1,34 @@
+{
+  "os": ["ubuntu-latest"],
+  "goos": ["linux", "windows", "darwin"],
+  "goarch": ["amd64", "386", "arm64", "arm"],
+  "include": [
+    {
+      "goarch": "amd64",
+      "archname": "x64"
+    },
+    {
+      "goarch": "386",
+      "archname": "x86"
+    },
+    {
+      "goos": "windows",
+      "goext": ".exe",
+      "archive": ".zip"
+    }
+  ],
+  "exclude": [
+    {
+      "goos": "windows",
+      "goarch": "arm"
+    },
+    {
+      "goos": "darwin",
+      "goarch": "386"
+    },
+    {
+      "goos": "darwin",
+      "goarch": "arm"
+    }
+  ]
+}
