@@ -195,6 +195,11 @@ jobs:
     name: Push Docker SingleArch Image (${{ matrix.os }}/${{ matrix.arch }})
     needs: [build-docker-singlearch]
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
     strategy:
       fail-fast: false
       matrix:
@@ -217,6 +222,14 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: dockerimage-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        if: ${{ !env.ACT }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push Docker image
         if: ${{ !env.ACT }}
@@ -265,6 +278,10 @@ jobs:
     needs: [push-docker-singlearch, build-docker-multiarch]
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Compute essential environment variables
         run: |
@@ -277,6 +294,14 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: dockerimage-linux
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        if: ${{ !env.ACT }}
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push Docker image
         if: ${{ !env.ACT }}
