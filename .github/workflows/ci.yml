@@ -68,7 +68,7 @@ jobs:
       build_matrix: ${{ steps.matrix.outputs.build_matrix }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Load GitHub build matrix
         if: ${{ !env.ACT }}
