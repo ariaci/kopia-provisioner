@@ -461,9 +461,10 @@ jobs:
   update-pkg-go-dev:
     name: Update pkg.go.dev
     needs: [release]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
       - name: Update pkg.go.dev
         if: ${{ !env.ACT }}
-        run: curl https://sum.golang.org/lookup/github.com/ariaci/kopia-provisioner@${{ github.ref_name }}
+        run: curl --fail --silent --show-error https://sum.golang.org/lookup/github.com/ariaci/kopia-provisioner@${{ github.ref_name }}
