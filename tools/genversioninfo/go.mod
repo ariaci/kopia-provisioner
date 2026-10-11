@@ -1,11 +1,8 @@
-module rawverx-app/genversioninfo
+module tools/genversioninfo
 
 go 1.26.4
 
-require (
-	github.com/ariaci/rawverx/genverx v0.0.0-20261010212351-e10f2bf9bb91
-	rawverx-app v0.0.0-00010101000000-000000000000
-)
+require github.com/ariaci/rawverx/genverx v0.0.0-20261011143909-bb171459a18c
 
 require (
 	github.com/ariaci/rawverx v1.0.0 // indirect
@@ -13,5 +10,3 @@ require (
 	github.com/tc-hib/winres v0.2.1 // indirect
 	golang.org/x/image v0.45.0 // indirect
 )
-
-replace rawverx-app => ../..

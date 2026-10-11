@@ -2,17 +2,18 @@ package main
 
 import (
 	"log"
-	"rawverx-app/version"
 
 	genverx "github.com/ariaci/rawverx/genverx"
 )
 
 func main() {
-	i := genverx.Info{
-		Version:     version.Get().Version,
+	i, err := genverx.NewInfoWithVersionFromFile("../../version/VERSION", genverx.AdditionalInfo{
 		ProductName: "kopia-provisioner",
 		Author:      "ariaci",
 		Copyright:   "© ariaci. Licensed under MIT.",
+	})
+	if err != nil {
+		log.Fatalf("Error creating version info: %v", err)
 	}
 
 	for _, a := range []genverx.Arch{
