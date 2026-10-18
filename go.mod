@@ -1,10 +1,13 @@
 module github.com/ariaci/kopia-provisioner
 
-go 1.26.1
+go 1.26.4
 
 require github.com/spf13/cobra v1.10.2 // direct
 
-require github.com/goccy/go-yaml v1.19.2
+require (
+	github.com/ariaci/rawverx v1.0.0
+	github.com/goccy/go-yaml v1.19.2
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
