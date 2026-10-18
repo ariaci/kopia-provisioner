@@ -1,8 +1,8 @@
 module tools/genversioninfo
 
-go 1.26.4
+go 1.25.0
 
-require github.com/ariaci/rawverx/genverx v0.0.0-20261011143909-bb171459a18c
+require github.com/ariaci/rawverx/genverx v1.0.0
 
 require (
 	github.com/ariaci/rawverx v1.0.0 // indirect
