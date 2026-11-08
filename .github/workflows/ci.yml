@@ -7,9 +7,11 @@ on:
       - "v*"
 
 env:
-  KOPIA_VERSION: 0.23.1
+  CGO_ENABLED: "0"
+  GOAMD64: "v1"
+  KOPIA_VERSION: "0.23.1"
   OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
-  REGCTL_VERSION: v0.11.7
+  REGCTL_VERSION: "v0.11.7"
   CONTAINER_REGISTRY: "ghcr.io/${{ github.repository }}"
   IMAGE_DESCRIPTION: "Declarative user management for Kopia servers"
   IMAGE_BASE_TAG: "${{ github.ref_name }}-kopia-"
