@@ -52,7 +52,7 @@ jobs:
           zip -r ${OUTPUT_BASE_NAME}-licenses.zip ${OUTPUT_BASE_NAME}/
 
       - name: Upload artifact
-        uses: ./.github/actions/upload-artifact
+        uses: ariaci/gha-upload-artifact@v1
         with:
           name: licenses
           path: |
@@ -137,7 +137,7 @@ jobs:
           tar -czf ../${{ env.ARTIFACT_NAME }}.tar.gz ${{ env.OUTPUT_BASE_NAME }}
 
       - name: Upload binaries
-        uses: ./.github/actions/upload-artifact
+        uses: ariaci/gha-upload-artifact@v1
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
@@ -184,7 +184,7 @@ jobs:
           .github/scripts/create-singlearch "${{ matrix.archname || matrix.arch }}"
 
       - name: Upload binaries
-        uses: ./.github/actions/upload-artifact
+        uses: ariaci/gha-upload-artifact@v1
         with:
           name: dockerimage-${{ matrix.os }}-${{ matrix.arch }}
           path: |
@@ -266,7 +266,7 @@ jobs:
           .github/scripts/create-multiarch
 
       - name: Upload binaries
-        uses: ./.github/actions/upload-artifact
+        uses: ariaci/gha-upload-artifact@v1
         with:
           name: dockerimage-linux
           path: |
@@ -414,7 +414,7 @@ jobs:
           cd .build
           zip -r ${{ env.OUTPUT_BASE_NAME }}-source.zip ${{ env.OUTPUT_BASE_NAME }}
 
-      - uses: ./.github/actions/upload-artifact
+      - uses: ariaci/gha-upload-artifact@v1
         with:
           name: source
           path: |
@@ -431,31 +431,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Flatten artifact directory
-        run: |
-          cd artifacts
-          find . -mindepth 2 -type f -print0 | xargs -0 -I{} mv "{}" .
-          find . -mindepth 1 -type d -empty -delete
-
-      - name: Generate SHA256SUMS
-        run: |
-          cd artifacts
-          find . -type f -printf "%P\0" | sort -z | xargs -0 sha256sum >../SHA256SUMS
-          mv ../SHA256SUMS .
-
-      - name: Create GitHub Release
-        if: ${{ !env.ACT }}
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: artifacts/**/*
-
-      - name: Upload artifacts for ACT testing
-        if: ${{ env.ACT }}
-        uses: actions/upload-artifact@v5
-        with:
-          name: act-release-artifacts
-          path: artifacts/*
+      - uses: ariaci/gha-make-release@v1
 
   update-pkg-go-dev:
     name: Update pkg.go.dev
@@ -464,6 +440,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Update pkg.go.dev
-        if: ${{ !env.ACT }}
-        run: curl --fail --silent --show-error https://sum.golang.org/lookup/github.com/ariaci/kopia-provisioner@${{ github.ref_name }}
+      - uses: ariaci/gha-update-pkg-go-dev@v1
+        with:
+          module: github.com/ariaci/kopia-provisioner
+          version: ${{ github.ref_name }}

@@ -1,5 +1,7 @@
 package version
 
+//go:generate go run -C ../tools/genversioninfo -buildvcs .
+
 import (
 	_ "embed"
 

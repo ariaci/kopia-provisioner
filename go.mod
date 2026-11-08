@@ -5,7 +5,7 @@ go 1.26.4
 require github.com/spf13/cobra v1.10.2 // direct
 
 require (
-	github.com/ariaci/rawverx v1.0.0
+	github.com/ariaci/rawverx v1.1.1
 	github.com/goccy/go-yaml v1.19.2
 )
 
