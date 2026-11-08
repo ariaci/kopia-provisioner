@@ -1,8 +1,8 @@
 package identity
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/goccy/go-yaml"
@@ -49,16 +49,24 @@ func findLineForKey(m ast.MappingNode, key string) (int, error) {
 }
 
 func loadProvisionerIdentities(configPath string, allowEmpty bool) (provisionerIdentities, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+	var reader io.Reader
+	if configPath == "-" {
+		reader = os.Stdin
+		configPath = "."
+	} else {
+		f, err := os.Open(configPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open config file: %w", err)
+		}
+		defer f.Close()
+		reader = f
 	}
 
-	decoder := yaml.NewDecoder(bytes.NewReader(data), yaml.DisallowUnknownField())
+	decoder := yaml.NewDecoder(reader, yaml.DisallowUnknownField())
 
 	var cfg Config
 	if err := decoder.Decode(&cfg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal config: %s", yaml.FormatError(err, true, false))
 	}
 
 	if !allowEmpty && len(cfg.Users) == 0 {

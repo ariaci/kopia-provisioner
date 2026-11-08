@@ -7,6 +7,7 @@ The design emphasizes modularity, predictable behavior, and clean separation of 
 ## ✨ Features
 
 - Declarative user provisioning via YAML
+- Read YAML configurations from files or standard input (`stdin`), enabling shell pipelines and dynamically generated configurations
 - Host-specific overrides for passwords and identity settings
 - Supply passwords using chainable providers (`file`, `env`, `inline`) with support for provider pipelines (`>`)
 - Typed password backends (`nil`, `plain`, `kopia-hash`)
@@ -55,18 +56,28 @@ docker pull ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1
 
 To pull a specific version:
 ```bash
-docker pull ghcr.io/ariaci/kopia-provisioner:v0.9.0-kopia-0.23.1
+docker pull ghcr.io/ariaci/kopia-provisioner:v0.11.0-kopia-0.23.1
 ```
 
 #### Running the provisioner
 
 Mount your configuration files into the container and execute the desired command:
+
 ```bash
 docker run --rm \
-  -v $(pwd)/users.yaml:/config/users.yaml \
-  -v $(pwd)/repo.config:/config/repo.config \
+  -v "$(pwd)/users.yaml:/config/users.yaml" \
+  -v "$(pwd)/repo.config:/config/repo.config" \
   ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 \
   users sync /config/users.yaml --config-file /config/repo.config
+```
+
+Alternatively, use standard input (`stdin`) to pipe the YAML configuration directly from the host without mounting the configuration file:
+
+```bash
+cat users.yaml | docker run --rm -i \
+  -v "$(pwd)/repo.config:/config/repo.config" \
+  ghcr.io/ariaci/kopia-provisioner:latest-kopia-0.23.1 \
+  users sync - --config-file /config/repo.config
 ```
 
 #### Example: Add users
@@ -187,6 +198,56 @@ Example:
 ```bash
 kopia-provisioner config init --scope password:user > users.yaml
 ```
+
+### Read YAML configuration from standard input
+
+All `users` commands (`sync`, `add`, `remove`, `update`) support reading YAML configurations directly from standard input (`stdin`).
+
+Use `-` instead of a configuration file path to enable `stdin` input.
+
+This allows configurations to be supplied through shell redirection, pipelines, or external tools without creating temporary files.
+
+#### Examples
+
+Read a configuration from a file (default behavior):
+
+```bash
+kopia-provisioner users sync users.yaml
+```
+
+Read a configuration from `stdin` using shell redirection:
+
+```bash
+kopia-provisioner users sync - < users.yaml
+```
+
+Read a configuration through a shell pipeline:
+
+```bash
+cat users.yaml | kopia-provisioner users sync -
+```
+
+Generate a configuration dynamically:
+
+```bash
+generate-config | kopia-provisioner users sync -
+```
+
+Decrypt an encrypted configuration before processing:
+
+```bash
+age --decrypt users.yaml.age | kopia-provisioner users sync -
+```
+
+#### Behavior
+
+- The special filename `-` is reserved for reading YAML configuration from `stdin`.
+- All supported user operations behave identically regardless of the input source.
+- When reading from `stdin`, relative paths used by `file` password providers are resolved against the current working directory.
+- When reading from a regular file, relative password file paths continue to be resolved against the configuration file's directory.
+- Empty user configurations are rejected by default unless `--allow-empty` (`-E`) is explicitly specified.
+
+This feature enables integration with external configuration generators, secret management tools, and existing Unix pipelines without changing the YAML format.
 
 ### Synchronize users with Kopia
 
@@ -346,7 +407,9 @@ password: "file>plain:secrets/db-password.txt"
 
 Behavior:
 - value is a file path
-- relative paths → resolved against the base directory
+- absolute paths are used as-is
+- relative paths are resolved against the configuration file's directory
+- when reading configuration from `stdin` (`-`), relative paths are resolved against the current working directory
 - file is read lazily during pipeline execution
 - surrounding whitespace is trimmed
 - errors if the file does not exist or cannot be read
