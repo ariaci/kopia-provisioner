@@ -9,6 +9,7 @@ on:
 env:
   KOPIA_VERSION: 0.23.1
   OUTPUT_BASE_NAME: "kopia-provisioner-${{ github.ref_name }}"
+  REGCTL_VERSION: v0.11.7
   CONTAINER_REGISTRY: "ghcr.io/${{ github.repository }}"
   IMAGE_DESCRIPTION: "Declarative user management for Kopia servers"
   IMAGE_BASE_TAG: "${{ github.ref_name }}-kopia-"
@@ -171,6 +172,8 @@ jobs:
           sudo apt-get install -y skopeo
       - name: Install regctl
         uses: regclient/actions/regctl-installer@main
+        with:
+          release: ${{ env.REGCTL_VERSION }}
       
       - uses: actions/checkout@v7
 
@@ -217,6 +220,8 @@ jobs:
 
       - name: Install regctl
         uses: regclient/actions/regctl-installer@main
+        with:
+          release: ${{ env.REGCTL_VERSION }}
       
       - uses: actions/download-artifact@v8
         with:
@@ -252,6 +257,8 @@ jobs:
 
       - name: Install regctl
         uses: regclient/actions/regctl-installer@main
+        with:
+          release: ${{ env.REGCTL_VERSION }}
       
       - uses: actions/checkout@v7
 
@@ -289,6 +296,8 @@ jobs:
 
       - name: Install regctl
         uses: regclient/actions/regctl-installer@main
+        with:
+          release: ${{ env.REGCTL_VERSION }}
       
       - uses: actions/download-artifact@v8
         with:
@@ -329,6 +338,8 @@ jobs:
 
       - name: Install regctl
         uses: regclient/actions/regctl-installer@main
+        with:
+          release: ${{ env.REGCTL_VERSION }}
       - name: Install GitHub CLI
         run: |
           sudo apt-get update
